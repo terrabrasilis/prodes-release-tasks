@@ -1,6 +1,7 @@
 #!/bin/bash
-source ./pgconfig.exportation
-export PGPASSWORD="${password}"
+#
+# load database server configurations
+. ./dbconf.sh
 
 # apply configs based on environment and context selections
 . ./export_tables_to_file_config.sh
@@ -37,10 +38,6 @@ do
         rm -f ${OUTPUT_DATA}/${GPKG_FNAME}.gpkg
         rm -f ${OUTPUT_DATA}/${GPKG_FNAME}.gpkg.zip
     fi;
-
-    # Define where pgsql2shp is and format the base command
-    PG_BIN="/usr/bin"
-    PG_CON="-d ${database} -U ${user} -h ${host} -p ${port}"
 
     # creating output directory to put files
     mkdir -p "${OUTPUT_DATA}"
