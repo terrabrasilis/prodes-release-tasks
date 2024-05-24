@@ -6,7 +6,7 @@ then
   export PGUSER="${user}"
   export PGPASSWORD="${password}"
   PG_BIN="/usr/bin"
-  PG_CON="-d ${database} -p ${port} -U ${user} -h ${host}"
+  PG_CON_BASE="-p ${port} -U ${user} -h ${host}"
 else
   echo "Missing PostgreSQL config file."
   echo "I'm creating one with default settings, but you must edit it to provide the correct configuration."

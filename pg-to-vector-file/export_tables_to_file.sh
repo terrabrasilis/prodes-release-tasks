@@ -33,6 +33,9 @@ do
     # The output directory for each database
     OUTPUT_DATA="${BASE_PATH_DATA}/${database}/${schema}"
 
+    # add database name into pg connect string
+    PG_CON="-d ${database} ${PG_CON_BASE}"
+
     # try remove old exportation file
     if [[ -f "${OUTPUT_DATA}/${GPKG_FNAME}.gpkg" ]]; then
         rm -f ${OUTPUT_DATA}/${GPKG_FNAME}.gpkg
