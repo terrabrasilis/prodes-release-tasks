@@ -3,12 +3,12 @@
 # if you want export only filtered tables, set the table names into FILTER variable below and removing the character # to uncomment that.
 # FILTER=("table_name_a" "table_name_b" "table_name_c")
 # FILTER=("forest" "accumulated_deforestation_2007" "hydrography" "cloud" "no_forest" "residual" "yearly_deforestation" )
-#FILTER=("accumulated_deforestation_2007_biome" "hydrography_biome" "no_forest_biome" "residual_biome" "yearly_deforestation_biome" "yearly_deforestation_nf_biome" "yearly_deforestation_smaller_than_625ha_biome")
+# FILTER=("accumulated_deforestation_2007_biome" "hydrography_biome" "no_forest_biome" "residual_biome" "yearly_deforestation_biome" "yearly_deforestation_nf_biome" "yearly_deforestation_smaller_than_625ha_biome")
 # FILTER=("cloud_2023_pri" "cloud_2023_pri_biome" "residual_2023_pri" "residual_2023_pri_biome" "yearly_deforestation_2023_pri" "yearly_deforestation_2023_pri_biome" "yearly_deforestation_smaller_than_625ha_2023_pri_biome")
 FILTER=("accumulated_deforestation_2007" "hydrography" "no_forest" "residual" "yearly_deforestation")
 #
 # Used for cloud table or forest table, generate one shape of each class_name/year to avoid the limit of maximum size of shapefiles
-# BREAK_SHP=("forest" "cloud" "forest_biome" "cloud_biome")
+BREAK_SHP=("forest" "cloud" "forest_biome" "cloud_biome")
 # BREAK_SHP=("forest_biome" "cloud_biome")
 #
 # used to confirm the sub_class column only for the deforestation tables in the list below (valid for "amazonia" and "amazonia_legal")
@@ -44,4 +44,4 @@ TABLE_TYPE='BASE TABLE'
 #
 # list of biomes to export data
 # PRODES_DBS=("pampa" "caatinga" "pantanal" "mata_atlantica" "cerrado" "amazonia" "amazonia_legal")
-PRODES_DBS=("amazonia_legal")
+PRODES_DBS=("pantanal" "amazonia")
