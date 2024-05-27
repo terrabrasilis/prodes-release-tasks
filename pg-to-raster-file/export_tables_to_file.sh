@@ -6,37 +6,64 @@
 # apply configs based on environment and context selections
 . ./export_tables_to_file_config.sh
 
-# output file name
-OUTPUT_FILE="PDigital2000_${BASE_YEAR}.tif"
-
-# if has an old tiff file, use it to make changes
-if [[ ! "${NEW_FILE}" = "yes" ]]; then
-
-gdal_calc.py -A PDigital2000_2022_AMZ_raster.tif  --quiet \
---calc="((A*logical_and(A>=0,A<=31)) + (A==32)*1 + (A*logical_and(A>=33,A<=110)))" \
---outfile PDigital2000_2022_AMZ_raster_semnv.tif
-
-fi;
+# load functions
+. ./functions_lib.sh
 
 # loop to export all tables of each database for an schema define into pgconfig file
-for DB_NAME in ${PRODES_DBS[@]}
+for TARGET_NAME in ${PRODES_DBS[@]}
 do
     # The database name based in biome name
-    database="prodes_${DB_NAME}_nb_p${BASE_YEAR}"
+    DB_NAME="prodes_${TARGET_NAME}_nb_p${BASE_YEAR}"
 
-    if [[ "${DB_NAME}" = "amazonia_legal" ]]; then
-        database="prodes_amazonia_nb_p${BASE_YEAR}"
+    if [[ "${TARGET_NAME}" = "amazonia_legal" ]]; then
+        DB_NAME="prodes_amazonia_nb_p${BASE_YEAR}"
     fi;
 
     # The output directory for each database
-    OUTPUT_DATA="${BASE_PATH_DATA}/${database}/${schema}"
+    OUTPUT_DATA="${BASE_PATH_DATA}/${DB_NAME}/${schema}"
+    # creating output directory to put files
+    mkdir -p "${OUTPUT_DATA}"
 
-    # add database name into pg connect string
-    PGCONNECTION="dbname=${database} ${PG_CON_BASE}"
+    # add database name into GDAL pg connect string
+    PGCONNECTION="dbname='${DB_NAME}' ${PG_CON_GDAL}"
+    # add database name into PSQL pg connect string
+    PG_CON="-d ${DB_NAME} ${PG_CON_SH}"
 
-    gdal_rasterize -burn 23 -tr 0.0002689997882979999733 -0.000269000486077000027 \
-    -te  -73.9783163999999971 -18.0406292244049773 -43.9135550608740317 5.2714908999999999 \
-    -a_nodata 255 -ot Byte PG:"host=localhost dbname='postgres' user='postgres' password='postgres'" -sql "SELECT * FROM public.yearly_deforestation_2008_2023 where class_name = 'd2023'" prodes_incremento2023.tif
+    # get bbox for the target data
+    BBOX=$(get_extent "${TARGET_NAME}")
+
+    # ------------------------------------------------ #
+    # GENERATE ONE RASTER TO EACH TABLE AS INPUT FILES
+    # ------------------------------------------------ #
+    INPUT_FILES=()
+    TABLES=("border" "no_forest" "hydrography" "accumulated" "yearly" "residual")
+    for TABLE in ${TABLES[@]}
+    do
+        # get table name to burn
+        TB_NAME=$(get_table_name "${TARGET_NAME}" "${TABLE}")
+
+        if [[ ! "${TB_NAME}" = "" ]];
+        then
+            # create temporary table with class as number
+            create_table_to_burn "${TB_NAME}"
+
+            # output file name
+            OUTPUT_FILE="prodes_${TARGET_NAME}_${TB_NAME}_${BASE_YEAR}"
+            # store the generated file into input list used in next step
+            INPUT_FILES+=("${OUTPUT_FILE}")
+
+            # rasterize vector table 
+            generate_raster "${TB_NAME}" "${BBOX}" "${PGCONNECTION}" "${OUTPUT_DATA}/${OUTPUT_FILE}"
+
+            # drop the temporary table
+            drop_table_burn "${TB_NAME}"
+        fi;
+    done
+    
+    INPUT_FILES=$(echo ${INPUT_FILES[@]})
+    OUTPUT_FILE="prodes_${TARGET_NAME}_${BASE_YEAR}"
+    # generate the final file with all intermediate files
+    generate_final_raster "${INPUT_FILES}" "${OUTPUT_FILE}"
 
 # end of biome list
 done
