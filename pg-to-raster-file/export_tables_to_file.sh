@@ -36,16 +36,22 @@ do
     # GENERATE ONE RASTER TO EACH TABLE AS INPUT FILES
     # ------------------------------------------------ #
     INPUT_FILES=()
-    TABLES=("border" "no_forest" "hydrography" "accumulated" "yearly" "residual")
+    TABLES=("border" "no_forest" "hydrography" "accumulated" "yearly" "residual" "cloud")
     for TABLE in ${TABLES[@]}
     do
         # get table name to burn
         TB_NAME=$(get_table_name "${TARGET_NAME}" "${TABLE}")
 
+        # define where clause if is cloud
+        WHERE=""
+        if [[ "${TABLE}" = "cloud" ]]; then
+            WHERE="WHERE image_date >= ( SELECT (extract(year from (MAX(image_date)::date))::text||'-01-01')::date FROM public.${TB_NAME} )"
+        fi;
+
         if [[ ! "${TB_NAME}" = "" ]];
         then
             # create temporary table with class as number
-            create_table_to_burn "${TB_NAME}"
+            create_table_to_burn "${TB_NAME}" "${WHERE}"
 
             # output file name
             OUTPUT_FILE="${TB_NAME}_${BASE_YEAR}"
@@ -66,7 +72,7 @@ do
     # generate the final file with all intermediate files
     generate_final_raster "${INPUT_FILES}" "${OUTPUT_FILE}" "${OUTPUT_DATA}"
     # generate the style as QML file
-    generate_color_palette "${OUTPUT_FILE}" "${OUTPUT_DATA}"
+    generate_qml_file "${OUTPUT_FILE}" "${OUTPUT_DATA}"
 
 # end of biome list
 done

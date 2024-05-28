@@ -8,4 +8,4 @@ BASE_PATH_DATA="/home/andre/Dados/homeAndre/Projects/workspace-terrabrasilis2.0/
 
 # list of biomes to export data
 # PRODES_DBS=("pampa" "caatinga" "pantanal" "mata_atlantica" "cerrado" "amazonia" "amazonia_legal")
-PRODES_DBS=("amazonia")
+PRODES_DBS=("pantanal")
