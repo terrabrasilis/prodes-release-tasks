@@ -48,9 +48,9 @@ do
             create_table_to_burn "${TB_NAME}"
 
             # output file name
-            OUTPUT_FILE="prodes_${TARGET_NAME}_${TB_NAME}_${BASE_YEAR}"
+            OUTPUT_FILE="${TB_NAME}_${BASE_YEAR}"
             # store the generated file into input list used in next step
-            INPUT_FILES+=("${OUTPUT_FILE}")
+            INPUT_FILES+=("${OUTPUT_FILE}.tif")
 
             # rasterize vector table 
             generate_raster "${TB_NAME}" "${BBOX}" "${PGCONNECTION}" "${OUTPUT_DATA}/${OUTPUT_FILE}"
@@ -62,8 +62,11 @@ do
     
     INPUT_FILES=$(echo ${INPUT_FILES[@]})
     OUTPUT_FILE="prodes_${TARGET_NAME}_${BASE_YEAR}"
+
     # generate the final file with all intermediate files
-    generate_final_raster "${INPUT_FILES}" "${OUTPUT_FILE}"
+    generate_final_raster "${INPUT_FILES}" "${OUTPUT_FILE}" "${OUTPUT_DATA}"
+    # generate the style as QML file
+    generate_color_palette "${OUTPUT_FILE}" "${OUTPUT_DATA}"
 
 # end of biome list
 done
