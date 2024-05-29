@@ -248,8 +248,9 @@ generate_qml_file(){
 
     for QML_FRACTION in ${QML_FRACTIONS[@]}
     do
-        QML_FRACTION=$(cat "${DATA_DIR}/${QML_FRACTION}")
-        echo "${QML_FRACTION}" >> "${DATA_DIR}/${OUTPUT_FILE}.qml"
+        FRACTION=$(cat "${DATA_DIR}/${QML_FRACTION}")
+        echo "${FRACTION}" >> "${DATA_DIR}/${OUTPUT_FILE}.qml"
+        rm "${DATA_DIR}/${QML_FRACTION}"
     done;
 
     echo "<rampLegendSettings useContinuousLegend=\"0\" minimumLabel=\"\" maximumLabel=\"\" direction=\"0\" orientation=\"2\" prefix=\"\" suffix=\"\">" >> "${DATA_DIR}/${OUTPUT_FILE}.qml"

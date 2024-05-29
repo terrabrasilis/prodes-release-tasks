@@ -38,7 +38,7 @@ do
     # GENERATE ONE RASTER TO EACH TABLE AS INPUT FILES
     # ------------------------------------------------ #
     INPUT_FILES=()
-    SOURCE_TABLE=()
+    QML_FRACTIONS=()
     TABLES=("border" "no_forest" "hydrography" "accumulated" "yearly" "residual" "cloud")
     for TABLE in ${TABLES[@]}
     do
@@ -74,9 +74,9 @@ do
             drop_table_burn "${TB_NAME}"
         fi;
     done
-    
+
     INPUT_FILES=$(echo ${INPUT_FILES[@]})
-    QML_FRACTIONS=$(echo ${QML_FRACTIONS[@]})
+    #QML_FRACTIONS=$(echo ${QML_FRACTIONS[@]})
     OUTPUT_FILE="prodes_${TARGET_NAME}_${BASE_YEAR}"
 
     # generate the final file with all intermediate files
