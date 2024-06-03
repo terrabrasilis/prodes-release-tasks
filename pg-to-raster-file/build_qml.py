@@ -120,7 +120,7 @@ class BuildQML:
             class_name=cdata[1]
             color=colors[c]
             c+=1
-            items.append(f"<item value=\"{class_number}\" label=\"{class_number} {class_name}\" color=\"{color}\" alpha=\"255\"/>")
+            items.append(f"<paletteEntry color=\"{color}\" label=\"{class_number} {class_name}\" value=\"{class_number}\" alpha=\"255\"/>")
 
         return "\n".join(items)
 

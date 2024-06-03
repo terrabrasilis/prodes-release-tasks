@@ -76,7 +76,6 @@ do
     done
 
     INPUT_FILES=$(echo ${INPUT_FILES[@]})
-    #QML_FRACTIONS=$(echo ${QML_FRACTIONS[@]})
     OUTPUT_FILE="prodes_${TARGET_NAME}_${BASE_YEAR}"
 
     # generate the final file with all intermediate files
