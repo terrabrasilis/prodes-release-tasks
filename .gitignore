@@ -1,2 +1,5 @@
 **/pgconfig*
 **/*.log
+**/*.tif
+**/*.qml
+**/*.vrt
