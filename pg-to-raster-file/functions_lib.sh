@@ -169,6 +169,9 @@ generate_final_raster(){
 
     gdal_translate -of GTiff -co "COMPRESS=LZW" -co BIGTIFF=YES "${OUTPUT_FILE}.vrt" "${OUTPUT_FILE}.tif"
 
+    rm "${OUTPUT_FILE}.vrt"
+    rm ${INPUT_FILES}
+
     cd -
 }
 
