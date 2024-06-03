@@ -8,7 +8,9 @@ class BuildQML:
     each vector data table used to create PRODES raster files.
     """
 
-    def __init__(self):
+    def __init__(self, color_step=15):
+        # the default number used to increase RGB to produce color variations
+        self.color_step=color_step
         # fixed color to forest used by default background for biome border
         self.forest=lambda:["#308703"]
         # the table name patterns to select an appropriate color palette 
@@ -20,11 +22,15 @@ class BuildQML:
         # fixed color to cloud
         self.cloud=lambda hm:["#37fef4"]
         # used to get palette for accumulated deforestations
-        self.accumulated=lambda hm:self.__yellow()
+        self.accumulated=lambda hm:["#ffff00"]
         # used to get palette for yearly deforestations
         self.yearly=lambda hm:self.__yellow(how_many=hm)
         # used to get palette for residual deforestations
         self.residual=lambda hm:self.__red(how_many=hm)
+        # Used to increase number in color_step. The color_step can be divided by a factor.
+        self.increase=lambda c,f=1: c+int(self.color_step/f)
+        # Used to decrease the number in color_step. The color_step can be divided by a factor.
+        self.decrease=lambda c,f=1: c-int(self.color_step/f)
         # the location to store the QML file fractions
         self.DATA_DIR=os.getenv("DATA_DIR")
         # the reference table name
@@ -34,60 +40,66 @@ class BuildQML:
 
     def __yellow(self, how_many=1):
         """
-        Used to produce up to 57 yeallow variations as:
-         - 19 variations of yellow only increase blue step(10) [0-190] (red=255 and green=255);
-         - 15 variations of yellow decrease 20 of green and increase blue step(10) [0-150] (red=255 and green=235);
-         - 13 variations of yellow decrease 20 of green and increase blue step(10) [0-130] (red=255 and green=215);
-         - 10 variations of yellow decrease 20 of green and increase blue step(10) [0-100] (red=255 and green=195);
+        Used to produce yellow variations.
+        
+        Yellow variations are created by increasing blue using color_step.
+        When blue is at the maximum for the color channel, upper_b, it returns to zero and
+        green decreases by color_step and blue increases by color_step again.
 
-         Usually to style the deforestations.
+        Usually to style the deforestations.
         """
-        # the limit of this function
-        if how_many>57:
-            raise Exception(f"Yellow variations were exceeded by {how_many-57} units. The maximum is 57 units.")
         r=255 # no change
-        g=255
+        # limits
+        upper_b=190
+        upper_g=240
+        lower_g=195
+        g=lower_g
         b=0
-        step=lambda c: c+10
         color_list=[]
         while(len(color_list)<how_many):
             color_list.append('#{0:02x}{1:02x}{2:02x}'.format(r,g,b))
-            if len(color_list)<19:
-                b=step(b)
-            elif len(color_list)<34:
-                g=235
-                b=0 if len(color_list)==19 else step(b)
-            elif len(color_list)<47:
-                g=215
-                b=0 if len(color_list)==34 else step(b)
-            elif len(color_list)<57:
-                g=195
-                b=0 if len(color_list)==47 else step(b)
+            b=self.increase(b)
+            b=b if b<=upper_b else 0
+            upper_b=int(upper_b*0.7) if b==0 else upper_b
+            g=self.increase(g,3) if (len(color_list)%3)==0 else g
+            g=g if g<=upper_g else lower_g
 
         return color_list
     
     def __red(self, how_many=1):
         """
-        Used to produce up to 120 red variations as:
-         - 120 variations of red increase green step(10) [0-120] for each increase blue by step(10) (red=255);
-
-         Usually to style the residual.
+        Used to produce red variations.
+        Red variations are created by increasing green in color_step for each increase in blue in color_step and setting red = 255.
+        Usually to style the residual.
         """
-        # the limit of this function
-        if how_many>120:
-            raise Exception(f"Red variations were exceeded by {how_many-120} units. The maximum is 120 units.")
-        r=255 # no change
-        g=0
-        b=0
-        step=lambda c: c+10
+        # limits
+        upper_r=255
+        upper_g=150
+        upper_b=90
+        lower_r=220
+        lower_g=20
+        lower_b=0
+        r=upper_r
+        g=upper_g
+        b=lower_b
         color_list=[]
+        step=lambda s: (len(color_list)%s)==0
         while(len(color_list)<how_many):
-            while(b<=100):
-                g=step(g)
-                color_list.append('#{0:02x}{1:02x}{2:02x}'.format(r,g,b))
-                if g==120:
-                    g=0
-                    b=step(b)
+            color_list.append('#{0:02x}{1:02x}{2:02x}'.format(r,g,b))
+            # change red
+            r=self.decrease(r) if step(3) else r
+            r=r if r>=lower_r else upper_r
+            upper_r=int(upper_r*0.7) if step(3) and r==upper_r else upper_r
+
+            # change green
+            g=self.decrease(g) if step(2) else g
+            g=g if g>=lower_g else upper_g
+            upper_g=int(upper_g*0.7) if step(2) and g==upper_g else upper_g
+            
+            # change blue
+            b=self.increase(b)
+            b=b if b<=upper_b else lower_b
+            upper_b=int(upper_b*0.7) if b==lower_b else upper_b
 
         return color_list
 
@@ -99,7 +111,6 @@ class BuildQML:
         """
         for tb in self.TABLE_NAMES:
             if tb in self.TB_NAME:
-                #return locals()[tb](size)
                 aFunc=getattr(self, tb)
                 return aFunc(size)
         # if search ends without colors, use the forest as default
