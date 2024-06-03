@@ -1,5 +1,8 @@
 #!/bin/bash
 #
+#VERSION=$(git describe --tags --abbrev=0)
+#TAG_VERSION=${VERSION}
+TAG_VERSION="v1.0.0"
 
 NO_CACHE=""
 
@@ -15,10 +18,6 @@ if [[ ! "$1" = "silent" ]]; then
         echo "Nice, it will be faster than use no-cache option."
     fi
 fi
-
-#VERSION=$(git describe --tags --abbrev=0)
-#TAG_VERSION=${VERSION}
-TAG_VERSION="v1.0.0"
 
 echo 
 echo "/######################################################################/"
