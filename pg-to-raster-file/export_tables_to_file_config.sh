@@ -4,7 +4,7 @@
 BASE_YEAR="2023"
 #
 # Set the output directory (is mapped inside the container after run)
-BASE_PATH_DATA="/home/andre/Dados/homeAndre/Projects/workspace-terrabrasilis2.0/prodes-release-tasks/pg-to-raster-file"
+BASE_PATH_DATA="/main/storage/exported/files"
 
 # list of biomes to export data
 # PRODES_DBS=("pampa" "caatinga" "pantanal" "mata_atlantica" "cerrado" "amazonia" "amazonia_legal")
