@@ -1,6 +1,6 @@
 # Export PostGIS tables to vector file
 
-Used to export tables with geographic data from the filtered list of databases for hosts defined by pgconfig files inside the config directory.
+Used to export tables with geographic vector data to Shapefiles and GeoPackage files.
 
 No ports are exposed, runs only autonomous job on container starts.
 
@@ -8,92 +8,94 @@ No ports are exposed, runs only autonomous job on container starts.
 
 We have some configurations to make this scripts works.
 
-Define a directory to store your output files and include a configuration file for each SGDB host that you need to back up.
+Define a directory to store your output files and include a configuration file for the SGDB host that you want run the exportation task.
 
-The data storage directory is used to map to a volume inside the container, see the docker-compose.yml file or the manual container run session.
+The data storage directory is used to map to a volume inside the container, see the "Export Settings" and "Container configuration" sections.
 
-The script expects a configuration subdirectory within the data store directory where the configuration files are placed.
+See the "Export Settings" section to find more setting options about the export task.
 
-See the "Export Settings" section to change export settings.
+### SGDB host configuration
 
-### SGDB hosts configuration
+The "dbconf.sh" script searches for the "pgconfig.exportation" file within the root directory.
 
-Suppose the data storage directory is **/data/**, then we need **/data/config/** as the location to place the SGDB host settings.
+If "pgconfig.exportation" is not found, the script will create one as an example.
 
- - /data/ (where the export files and log file is placed)
- - /data/config/ (where the hosts setting files is placed)
+You need to provide SGDB host settings by editing "pgconfig.exportation".
 
 The setting file example:
 ```txt
 user="postgres"
 host="localhost"
 port=5432
+schema="public"
 password="postgres"
 ```
 
-We may need more than one host configuration, so repeat the file using a new name.
+### Export Settings
 
- - /data/config/host1
- - /data/config/host2
- - /data/config/host3
-
-## Export Settings
-
-The export expects some parameter definitions. These parameters are defined in the exportconf.sh script and have default values, they are:
+The export expects some parameter definitions. These parameters are defined in the "export_tables_to_file_config.sh" script and have default values, they are:
 
 ```sh
+# if you want export only filtered tables, set the table names into FILTER variable below and removing the character # to uncomment that.
+# FILTER=("table_name_a" "table_name_b" "table_name_c")
+FILTER=("accumulated_deforestation_2007" "hydrography" "no_forest" "residual" "yearly_deforestation")
+#
+# Used for cloud table or forest table, generate one shape of each class_name/year to avoid the limit of maximum size of shapefiles
+BREAK_SHP=("forest" "cloud" "forest_biome" "cloud_biome")
+# BREAK_SHP=("forest_biome" "cloud_biome")
+#
+# used to confirm the sub_class column only for the deforestation tables in the list below (valid for "amazonia" and "amazonia_legal")
+TABLES_WITH_SUBCLASS=("yearly_deforestation" "yearly_deforestation_biome")
+#
+# Used as a database name suffix. Consider that the default database name is prodes_<biome>_nb_p<BASE_YEAR>
+BASE_YEAR="2023"
+#
+# Set the output directory (is mapped inside the container after run)
+BASE_PATH_DATA="/main/storage/exported/files"
+#
+#
 # Remove the output files after ZIP
-RM_OUT="yes"
+RM_OUT="no"
 #
 # Fix geometries before export
-FIX="yes"
+FIX="no"
+#
+# Fix FID before export. Make an update into sequential numeric column used as primary key.
+FID="no"
 #
 # Export to Shapefile
-SHP="yes"
+SHP="no"
 #
 # Export to GeoPackage
 GPKG="yes"
+# if same file is yes, than the gpkg file name is the same of the all data from each database.
 SAME_FILE="yes"
-#
-# the selected schema
-SCHEMA="public"
-#
+
 # to read the tables or views from selected schema
 TABLE_TYPE='BASE TABLE'
 #TABLE_TYPE='VIEW'
+#
+# list of biomes to export data
+# PRODES_DBS=("pampa" "caatinga" "pantanal" "mata_atlantica" "cerrado" "amazonia" "amazonia_legal")
+PRODES_DBS=("pantanal" "amazonia")
 ```
 
-If you need to change these values, create a new file called "exportconf" inside the config directory and put the KVP that you want overwrite.
+If you need to change these values, edit the "export_tables_to_file_config.sh" file inside the "pg-to-vector-file/" directory on repository root.
 
- - /data/config/exportconf
+### Container configuration
 
-Same location used to put the host configuration file, like described in "SGDB hosts configuration" session.
+The exportation task need a directory to use as a docker volume where output data is written.
 
+Adjust the path in the "run-pg-export-to-file.sh", using the VOLUME_HOST if necessary.
 ```sh
-# KVP example to avoid making valid geometries
-FIX="no"
-```
-
-## Build image
-
-To change the image tag version, create a new git project version number before creating it.
-
-To build, use the following script.
-```sh
-./docker-build.sh
+VOLUME_HOST="/main/storage/exported/files"
 ```
 
 ## Manual container run
 
-Before running, read the configuration session.
+Before running, read the "Container configuration" session.
 
 Using canonical form.
 ```sh
-docker run -d --rm --name export_pg \
--v /volume/directory:/data \
-terrabrasilis/export-pg-dump:v<version>
-```
-Or use the compose file.
-```sh
-docker-compose -f docker-compose.yml up -d
+run-pg-export-to-file.sh vector
 ```
