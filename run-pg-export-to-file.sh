@@ -15,8 +15,9 @@ elif [[ "${1}" = "raster" ]]; then
   DIR_TYPE="pg-to-raster-file"
 else
   echo "You need provide some type of exportation."
+  echo "------------------------------------------"
   echo "The options are: vector or raster"
-  echo "Example: ./run-pg-export-to-file.sh vector"
+  echo "Example: ./run-pg-export-to-file.sh vector up"
   exit
 fi;
 
@@ -24,15 +25,18 @@ fi;
 # If a new image with a different tag was created, change the IMAGE_TAG
 IMAGE_TAG="v1.0.0"
 
-if [[ "$1" != "up" && "$1" != "down" ]]; then
+if [[ "$2" != "up" && "$1" != "down" ]]; then
   echo "Use up to start OR down to stop."
+  echo "------------------------------------------"
+  echo "Example: ./run-pg-export-to-file.sh vector up"
+
 else
-  if [[ "$1" == "up" ]]; then
-    docker run -d --name export_pg_to_file --rm -v ${SCRIPT_DIR}/${DIR_TYPE}:/scripts \
+  if [[ "$2" == "up" ]]; then
+    docker run -d --name export_pg_to_${1}_file --rm -v ${SCRIPT_DIR}/${DIR_TYPE}:/scripts \
     -v ${VOLUME_HOST}:/main/storage/exported/files \
     terrabrasilis/run-scripts-pg-gdal-3-6:${IMAGE_TAG} bash /scripts/start.sh
   fi;
-  if [[ "$1" == "down" ]]; then
-    docker container stop export_pg_to_file
+  if [[ "$2" == "down" ]]; then
+    docker container stop export_pg_${1}_to_file
   fi;
 fi;
