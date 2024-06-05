@@ -15,6 +15,7 @@ RUN echo "" > /etc/apt/apt.conf.d/docker-clean \
     tzdata \
     zip \
     postgresql-client \
+    python3-psycopg2 \
     && ln -fs /usr/share/zoneinfo/America/Sao_Paulo /etc/localtime \
     && dpkg-reconfigure --frontend noninteractive tzdata \
     && rm -f /var/cache/apt/archives/*.deb /var/cache/apt/archives/partial/*.deb /var/cache/apt/*.bin
