@@ -58,11 +58,17 @@ Adjust the path in the "run-pg-export-to-file.sh", using the VOLUME_HOST if nece
 VOLUME_HOST="/main/storage/exported/files"
 ```
 
+If VOLUME_HOST is empty, the default is to use the current directory to store the output files.
+For raster option the output is located inside "pg-to-raster-file/" otherwise if it is vector then the locations are "pg-to-vector-file/"
+
 ## Manual container run
 
 Before running, read the "Container configuration" session.
 
 Using canonical form.
 ```sh
-run-pg-export-to-file.sh raster
+# Call the script passing the type of exportation and command to docker:
+# - "vector" or "raster"
+# - "up" or "down"
+./run-pg-export-to-file.sh raster up
 ```
