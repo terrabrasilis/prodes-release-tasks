@@ -7,7 +7,6 @@ then
   PG_BIN="/usr/bin"
   PG_CON_GDAL="host=${host} port=${port} user='${user}' password='${PGPASSWORD}'"
   PG_CON_SH="-p ${port} -U ${user} -h ${host}"
-  PG_CON_PY="postgresql://${user}:${PGPASSWORD}@${host}:${port}"
 else
   echo "Missing PostgreSQL config file."
   echo "I'm creating one with default settings, but you must edit it to provide the correct configuration."

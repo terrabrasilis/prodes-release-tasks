@@ -28,8 +28,6 @@ do
     PGCONNECTION="dbname='${DB_NAME}' ${PG_CON_GDAL}"
     # add database name into PSQL pg connect string
     PG_CON="-d ${DB_NAME} ${PG_CON_SH}"
-    # add database name into psycopg2 pg connect string
-    PG_CON_PY="${PG_CON_PY}/${DB_NAME}"
 
     # get bbox for the target data
     BBOX=$(get_extent "${TARGET_NAME}")
@@ -62,7 +60,7 @@ do
             INPUT_FILES+=("${OUTPUT_FILE}.tif")
 
             # generate a color palette to current data
-            generate_palette_entries "${TB_NAME}" "${OUTPUT_DIR}" "${PG_CON_PY}"
+            generate_palette_entries "${TB_NAME}" "${OUTPUT_DIR}" "${PGCONNECTION}"
 
             # store the style fractions for each table used in next step to build the final QML
             QML_FRACTIONS+=("${TB_NAME}.sfl")
