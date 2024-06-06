@@ -19,6 +19,11 @@ do
         DB_NAME="prodes_amazonia_nb_p${BASE_YEAR}"
     fi;
 
+    # Logging which database will be processed now.
+    echo ""
+    echo "Processing the database: ${DB_NAME}"
+    echo "----------------------------------------------"
+
     # The output directory for each database
     OUTPUT_DIR="${BASE_PATH_DATA}/${DB_NAME}/${schema}"
     # creating output directory to put files
