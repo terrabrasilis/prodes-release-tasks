@@ -87,5 +87,11 @@ do
     # generate the style as QML file
     generate_qml_file "${QML_FRACTIONS}" "${OUTPUT_FILE}" "${OUTPUT_DIR}"
 
+    # generate the report file
+    generate_report_file "${OUTPUT_FILE}" "${OUTPUT_DIR}"
+
+    # generate the ZIP file
+    generate_final_zip_file "${OUTPUT_FILE}" "${OUTPUT_DIR}"
+
 # end of biome list
 done

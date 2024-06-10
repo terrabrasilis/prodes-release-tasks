@@ -184,6 +184,27 @@ generate_palette_entries(){
     python3 build_qml.py
 }
 
+generate_report_file() {
+    FILE_NAME="${1}"
+    DATA_DIR="${2}"
+    
+    # to create a PERMANENT directory using for the next step
+    grass -e -c ${DATA_DIR}/${FILE_NAME}.tif ${DATA_DIR}/MAPSET
+
+    # generate the report
+    grass ${DATA_DIR}/MAPSET/PERMANENT --exec bash grass_report.sh "${DATA_DIR}" "${FILE_NAME}"
+
+    # remove the MAPSET 
+    rm -rf ${DATA_DIR}/MAPSET
+}
+
+generate_final_zip_file(){
+    FILE_NAME="${1}"
+    DATA_DIR="${2}"
+
+    zip -j "${DATA_DIR}/${FILE_NAME}.*" ${DATA_DIR}/${FILE_NAME}.zip
+}
+
 generate_qml_file(){
     QML_FRACTIONS="${1}"
     OUTPUT_FILE="${2}"
