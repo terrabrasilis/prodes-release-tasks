@@ -14,8 +14,10 @@ RUN echo "" > /etc/apt/apt.conf.d/docker-clean \
     &&  apt-get install -y \
     tzdata \
     zip \
+    grass-core \
     postgresql-client \
     python3-psycopg2 \
+    python3-six \
     && ln -fs /usr/share/zoneinfo/America/Sao_Paulo /etc/localtime \
     && dpkg-reconfigure --frontend noninteractive tzdata \
     && rm -f /var/cache/apt/archives/*.deb /var/cache/apt/archives/partial/*.deb /var/cache/apt/*.bin
