@@ -202,7 +202,7 @@ generate_final_zip_file(){
     FILE_NAME="${1}"
     DATA_DIR="${2}"
 
-    zip -j "${DATA_DIR}/${FILE_NAME}.*" ${DATA_DIR}/${FILE_NAME}.zip
+    zip -j ${DATA_DIR}/${FILE_NAME}.zip ${DATA_DIR}/${FILE_NAME}.*
 }
 
 generate_qml_file(){
