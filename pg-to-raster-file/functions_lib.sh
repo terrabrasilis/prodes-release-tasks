@@ -93,7 +93,7 @@ get_class_number(){
             ;;
 
         biome | amazon | brazilian)
-            echo "100::integer as class_number, 'Floresta' as class_name"
+            echo "100::integer as class_number, 'Vegetação Nativa' as class_name"
             ;;
 
         no_forest)
