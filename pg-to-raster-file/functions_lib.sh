@@ -97,7 +97,7 @@ get_class_number(){
             ;;
 
         no_forest)
-            echo "101::integer as class_number, 'Nao Floresta' as class_name"
+            echo "101::integer as class_number, 'Não Floresta' as class_name"
             ;;
         cloud)
             echo "99::integer as class_number, 'Nuvem' as class_name"
