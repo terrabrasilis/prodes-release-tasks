@@ -96,7 +96,7 @@ get_class_number(){
             echo "100::integer as class_number, 'Vegetação Nativa' as class_name"
             ;;
 
-        no_forest)
+        no)
             echo "101::integer as class_number, 'Não Floresta' as class_name"
             ;;
         cloud)
@@ -124,9 +124,12 @@ create_table_to_burn(){
 }
 
 drop_table_burn() {
-    TB="${1}"
-    SQL="DROP TABLE IF EXISTS public.burn_${TB}"
-    ${PG_BIN}/psql ${PG_CON} -t -c "${SQL};"
+    if [[ "${KEEP_TMP}" = "no" ]];
+    then
+        TB="${1}"
+        SQL="DROP TABLE IF EXISTS public.burn_${TB}"
+        ${PG_BIN}/psql ${PG_CON} -t -c "${SQL};"
+    fi;
 }
 
 get_extent(){
@@ -169,8 +172,11 @@ generate_final_raster(){
 
     gdal_translate -of GTiff -co "COMPRESS=LZW" -co BIGTIFF=YES "${OUTPUT_FILE}.vrt" "${OUTPUT_FILE}.tif"
 
-    rm "${OUTPUT_FILE}.vrt"
-    rm ${INPUT_FILES}
+    if [[ "${KEEP_TMP}" = "no" ]];
+    then
+        rm "${OUTPUT_FILE}.vrt"
+        rm ${INPUT_FILES}
+    fi;
 
     cd -
 }
@@ -239,7 +245,10 @@ generate_qml_file(){
     do
         FRACTION=$(cat "${DATA_DIR}/${QML_FRACTION}")
         echo "${FRACTION}" >> "${DATA_DIR}/${OUTPUT_FILE}.qml"
-        rm "${DATA_DIR}/${QML_FRACTION}"
+        if [[ "${KEEP_TMP}" = "no" ]];
+        then
+            rm "${DATA_DIR}/${QML_FRACTION}"
+        fi;
     done;
 
     echo "</colorPalette>" >> "${DATA_DIR}/${OUTPUT_FILE}.qml"

@@ -8,4 +8,8 @@ BASE_PATH_DATA="/main/storage/exported/files"
 
 # list of biomes to export data
 # PRODES_DBS=("pampa" "caatinga" "pantanal" "mata_atlantica" "cerrado" "amazonia" "amazonia_legal")
-PRODES_DBS=("mata_atlantica")
+PRODES_DBS=("amazonia" "amazonia_legal")
+#
+#
+# keep temporary files and tables?
+KEEP_TMP="yes"
