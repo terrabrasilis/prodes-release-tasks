@@ -12,4 +12,4 @@ PRODES_DBS=("amazonia" "amazonia_legal")
 #
 #
 # keep temporary files and tables?
-KEEP_TMP="yes"
+KEEP_TMP="no"
