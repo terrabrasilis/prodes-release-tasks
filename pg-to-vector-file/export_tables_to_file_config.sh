@@ -5,7 +5,7 @@
 # FILTER=("forest" "accumulated_deforestation_2007" "hydrography" "cloud" "no_forest" "residual" "yearly_deforestation" )
 # FILTER=("accumulated_deforestation_2007_biome" "hydrography_biome" "no_forest_biome" "residual_biome" "yearly_deforestation_biome" "yearly_deforestation_nf_biome" "yearly_deforestation_smaller_than_625ha_biome")
 # FILTER=("cloud_2023_pri" "cloud_2023_pri_biome" "residual_2023_pri" "residual_2023_pri_biome" "yearly_deforestation_2023_pri" "yearly_deforestation_2023_pri_biome" "yearly_deforestation_smaller_than_625ha_2023_pri_biome")
-FILTER=("accumulated_deforestation_2007" "hydrography" "no_forest" "residual" "yearly_deforestation")
+FILTER=("accumulated_deforestation_2000" "hydrography" "cloud" "residual" "yearly_deforestation")
 #
 # Used for cloud table or forest table, generate one shape of each class_name/year to avoid the limit of maximum size of shapefiles
 BREAK_SHP=("forest" "cloud" "forest_biome" "cloud_biome")

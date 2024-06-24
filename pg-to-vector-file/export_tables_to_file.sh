@@ -75,6 +75,8 @@ do
         # To fix if needed
         fix_uid "${TABLE}"
         fix_geom "${TABLE}"
+        # generate an report by table
+        report "${TABLE}"
 
         YEAR_COL="year"
         YEAR_TYPE_SQL="SELECT pg_typeof(year)::text FROM ${schema}.${TABLE} limit 1"

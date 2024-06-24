@@ -18,6 +18,14 @@ fix_geom(){
     fi;
 }
 
+report(){
+    TB="$1"
+    SQL="SELECT class_name, ROUND(SUM(area_km)::numeric, 2)::text || ' km²' as area "
+    SQL="${SQL} ${schema}.${TB} GROUP BY 1, ORDER BY 1 ASC;"
+    AREAS=($(${PG_BIN}/psql ${PG_CON} -t -c "${SQL};"))
+    echo ${AREAS} >> "${OUTPUT_DATA}/${TB}_report.txt"
+}
+
 export_shp(){
     SQL="$1"
     TB="$2"
@@ -37,7 +45,7 @@ export_gpkg(){
     FNAME="${TB}"
     echo "call export_gpkg..................."
     echo "database=${database}"
-    echo "SL=${SQL}"
+    echo "SQL=${SQL}"
     echo "TB=${TB}"
     if [[ "$GPKG" = "yes" ]]; then
         if [[ "$SAME_FILE" = "yes" ]]; then
