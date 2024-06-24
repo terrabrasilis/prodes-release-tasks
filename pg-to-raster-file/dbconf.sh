@@ -4,7 +4,6 @@ if [[ -f "./pgconfig.exportation" ]];
 then
   source "./pgconfig.exportation"
   export PGPASSWORD="${password}"
-  PG_BIN="/usr/bin"
   PG_CON_GDAL="host=${host} port=${port} user='${user}' password='${PGPASSWORD}'"
   PG_CON_SH="-p ${port} -U ${user} -h ${host}"
 else

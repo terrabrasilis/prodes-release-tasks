@@ -1,5 +1,8 @@
 #!/bin/bash
 #
+# the path of the binaries in the container where the CLI programs are installed.
+PATH_BIN="/usr/bin"
+#
 # load database server configurations
 . ./dbconf.sh
 

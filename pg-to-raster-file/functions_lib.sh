@@ -120,7 +120,7 @@ create_table_to_burn(){
     SQL="${SQL} 	 SELECT ${DATA_PATTERN}, geom FROM public.${TB} ${WHERE}"
     SQL="${SQL} )"
     SQL="${SQL} SELECT * FROM target"
-    ${PG_BIN}/psql ${PG_CON} -t -c "${SQL};"
+    ${PATH_BIN}/psql ${PG_CON} -t -c "${SQL};"
 }
 
 drop_table_burn() {
@@ -128,7 +128,7 @@ drop_table_burn() {
     then
         TB="${1}"
         SQL="DROP TABLE IF EXISTS public.burn_${TB}"
-        ${PG_BIN}/psql ${PG_CON} -t -c "${SQL};"
+        ${PATH_BIN}/psql ${PG_CON} -t -c "${SQL};"
     fi;
 }
 
@@ -139,7 +139,7 @@ get_extent(){
     SQL="WITH target AS"
     SQL="${SQL}( SELECT ST_Extent(geom) as bbox FROM public.${TB} )"
     SQL="${SQL}SELECT ST_XMin(bbox) ||','|| ST_YMin(bbox) ||','|| ST_XMax(bbox) ||','|| ST_YMax(bbox) FROM target"
-    BBOX=($(${PG_BIN}/psql ${PG_CON} -t -c "${SQL};"))
+    BBOX=($(${PATH_BIN}/psql ${PG_CON} -t -c "${SQL};"))
     
     XMIN=$(echo "${BBOX}" | cut -d',' -f1)
     YMIN=$(echo "${BBOX}" | cut -d',' -f2)
@@ -195,10 +195,10 @@ generate_report_file() {
     DATA_DIR="${2}"
     
     # to create a PERMANENT directory using for the next step
-    grass -e -c ${DATA_DIR}/${FILE_NAME}.tif ${DATA_DIR}/MAPSET
+    ${PATH_BIN}/grass -e -c ${DATA_DIR}/${FILE_NAME}.tif ${DATA_DIR}/MAPSET
 
     # generate the report
-    grass ${DATA_DIR}/MAPSET/PERMANENT --exec bash grass_report.sh "${DATA_DIR}" "${FILE_NAME}"
+    ${PATH_BIN}/grass ${DATA_DIR}/MAPSET/PERMANENT --exec bash grass_report.sh "${DATA_DIR}" "${FILE_NAME}"
 
     # remove the MAPSET 
     rm -rf ${DATA_DIR}/MAPSET
