@@ -6,10 +6,6 @@ BASE_YEAR="2023"
 # Set the output directory (is mapped inside the container after run)
 BASE_PATH_DATA="/main/storage/exported/files"
 #
-#
-# Remove the output files
-RM_OUT="no"
-#
 # Fix geometries before export
 FIX_GEOM="no"
 # Fix UC names before export

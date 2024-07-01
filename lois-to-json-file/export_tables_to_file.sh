@@ -48,7 +48,7 @@ do
         fi;
 
         fix_geom "${TABLE}"
-        export_geojson "${TABLE}"
+        export_geojson "${TABLE}" "${DB_NAME}"
     done
 
 # end of biome list
