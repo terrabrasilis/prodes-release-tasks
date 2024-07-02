@@ -1,6 +1,8 @@
 # Export PostGIS tables to GeoJson file
 
-Used to export LOI tables with geographic vector data to GeoJson files.
+The objective is to create a copy of the cropped LOI tables by biome, simpler and prepared for use in the Dashboard Data Model and Dashboard Application.
+
+This process exported LOI tables with geographic vector data to GeoJson and Shapefiles files following a specific data model.
 
 The main process need apply some changes to improve names of LOIs, fix and simplify geometries to guarantee speed up map render.
 Using the PostGIS resources like ST_SimplifyPreserveTopology and ST_MakeValid, to simplify and [GDAL/OGR](https://gdal.org/drivers/vector/geojson.html) tool to export to GeoJson, we produce similary files as old approach.
@@ -18,7 +20,7 @@ No ports are exposed, runs only autonomous job on container starts.
 
 We have some configurations to make this scripts works.
 
-Main conditionThe main condition is to have a schema and a table for each LOI, Local Of Interest, in the database for which you want to generate the GeoJson output files. The schema need has a same name of biome with "_lois" prefix, example: "amazonia_lois", and the expected table names of each LOI is: indi, consunit, mun, uf
+The main condition is to have a schema and a table for each LOI, Local Of Interest, in the database for which you want to generate the GeoJson output files. The schema need has a same name of biome, example: "amazonia", and the expected table names of each LOI is: indi, consunit, mun, uf
 
 Define a directory to store your output files and include a configuration file for the SGDB host that you want run the exportation task.
 

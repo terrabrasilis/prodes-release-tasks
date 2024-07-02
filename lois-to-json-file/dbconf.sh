@@ -12,7 +12,6 @@ else
   echo "I'm creating one with default settings, but you must edit it to provide the correct configuration."
   echo "host=\"localhost\"" > "./pgconfig.exportation"
   echo "user=\"postgres\"" >> "./pgconfig.exportation"
-  echo "schema=\"public\"" >> "./pgconfig.exportation"
   echo "port=\"5432\"" >> "./pgconfig.exportation"
   echo "password=\"postgres\"" >> "./pgconfig.exportation"
   exit

@@ -15,40 +15,41 @@ if [[ -d "${BASE_PATH}" ]]; then
 fi;
 
 # loop through database list to export all tables from LOI schemas
-for DB_NAME in ${PRODES_DBS[@]}
+for LOI_SCHEMA in ${LOI_SCHEMAS[@]}
 do
-    # The database name based in biome name
-    database="prodes_${DB_NAME}_nb_p${BASE_YEAR}"
-    schema="${DB_NAME}_lois"
-
-    if [[ "${DB_NAME}" = "amazonia_legal" ]]; then
-        database="prodes_amazonia_nb_p${BASE_YEAR}"
-    fi;
+    database="${DB_NAME}"
 
     # The output directory for each database
-    OUTPUT_DATA="${BASE_PATH_DATA}/${database}/${schema}"
+    OUTPUT_DATA="${BASE_PATH_DATA}/${database}/${LOI_SCHEMA}"
 
     # add database name into pg connect string
     PG_CON="-d ${database} ${PG_CON_BASE}"
-    echo "PG_CON=${PG_CON}"
 
     # creating output directory to put files
     mkdir -p "${OUTPUT_DATA}"
 
-    SQL_TABLES="select table_name from information_schema.tables where table_schema = '${schema}'"
-    SQL_TABLES="${SQL_TABLES} and table_type = '${TABLE_TYPE}' "
+    SQL_TABLES="SELECT table_name FROM information_schema.tables WHERE table_schema = '${LOI_SCHEMA}'"
+    SQL_TABLES="${SQL_TABLES} AND table_type = '${TABLE_TYPE}' AND NOT table_name ilike '%_loi%'"
 
     TABLES=($(${PG_BIN}/psql ${PG_CON} -t -c "${SQL_TABLES};"))
 
     for TABLE in ${TABLES[@]}
     do
+
+        # used only once to improve normalization of tables and columns
+        # fix_column_names "${TABLE}"
+        
         # To fix if needed
         if [[ "${TABLE}" = "${UC_TABLE_NAME}" ]]; then
             fix_uc_names "${TABLE}"
         fi;
 
+        create_loi_table "${TABLE}"
+        create_loi_view "${TABLE}"
+
         fix_geom "${TABLE}"
-        export_geojson "${TABLE}" "${DB_NAME}"
+        export_geojson "${TABLE}"
+        export_shape "${TABLE}"
     done
 
 # end of biome list
