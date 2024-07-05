@@ -3,17 +3,12 @@ fix_column_names(){
     echo "${LOI_SCHEMA}.${TB}"
     echo "=========================================================="
 
-    SQL="ALTER TABLE IF EXISTS ${LOI_SCHEMA}.${TB} RENAME TO municipality;"
-    ${PG_BIN}/psql ${PG_CON} -t -c "${SQL}"
     SQL="ALTER TABLE IF EXISTS ${LOI_SCHEMA}.${TB} RENAME bioma TO ${LOI_NAME_COLUMN};"
     ${PG_BIN}/psql ${PG_CON} -t -c "${SQL}"
     SQL="ALTER TABLE IF EXISTS ${LOI_SCHEMA}.${TB} RENAME terrai_nom TO ${LOI_NAME_COLUMN};"
     ${PG_BIN}/psql ${PG_CON} -t -c "${SQL}"
     SQL="ALTER TABLE IF EXISTS ${LOI_SCHEMA}.${TB} RENAME sprclasse TO ${LOI_NAME_COLUMN};"
-    ${PG_BIN}/psql ${PG_CON} -t -c "${SQL}"
-    SQL="ALTER TABLE IF EXISTS ${LOI_SCHEMA}.${TB} RENAME geoms TO ${LOI_GEOM_COLUMN};"
-    ${PG_BIN}/psql ${PG_CON} -t -c "${SQL}"
-    
+    ${PG_BIN}/psql ${PG_CON} -t -c "${SQL}"    
 }
 
 create_loi_view(){
@@ -127,70 +122,61 @@ fix_geom(){
     fi;
 }
 
-simplify_geom(){
-    # To simplify geometries before export to GeoJson
-    #
-    TB="${1}"
-    # create a column to put changes
-    SQL="ALTER TABLE IF EXISTS ${LOI_SCHEMA}.${TB} ADD COLUMN ${LOI_GEOM_COLUMN}_small geometry;"
-    ${PG_BIN}/psql ${PG_CON} -t -c "${SQL}"
-    
-    # https://postgis.net/docs/ST_SimplifyPreserveTopology.html
-    tolerance="0.0009" # ~100 meters
-    SQL="UPDATE ${LOI_SCHEMA}.${TB} SET ${LOI_GEOM_COLUMN}_small=ST_SimplifyPreserveTopology(${LOI_GEOM_COLUMN}, ${tolerance});"
-    ${PG_BIN}/psql ${PG_CON} -t -c "${SQL}"
-
-    SQL="UPDATE ${LOI_SCHEMA}.${TB} SET ${LOI_GEOM_COLUMN}_small=ST_MakeValid(${LOI_GEOM_COLUMN}_small) WHERE NOT ST_IsValid(${LOI_GEOM_COLUMN}_small);"
-    ${PG_BIN}/psql ${PG_CON} -t -c "${SQL}"
-}
-
 export_geojson(){
     # Used to export LOI table to GeoJson used into Dashboard Application via REDIS API
     #
-    TB="${1}_loi" # Input Table Name
-    FN="${1}" # Output File Name
-    
-    simplify_geom "${TB}"
+    if [[ "${GEOJSON_EXPORT}" = "yes" ]]; then
 
-    # remove old json file
-    if [[ -f "${OUTPUT_DATA}/${FN}.json" ]]; then
-        rm ${OUTPUT_DATA}/${FN}.json
+        TB="${1}_loi" # Input Table Name
+        FN="${1}" # Output File Name
+
+        # remove old json file
+        if [[ -f "${OUTPUT_DATA}/${FN}.json" ]]; then
+            rm ${OUTPUT_DATA}/${FN}.json
+        fi;
+
+        # Query to load data
+        SQL="SELECT name, ${LOI_GEOM_COLUMN} FROM ${LOI_SCHEMA}.${TB}"
+        # read from Postgres and write into GeoJson file
+        ogr2ogr -f "GeoJSON" ${OUTPUT_DATA}/${FN}.pretty.json \
+        -lco WRITE_NAME=NO -lco RFC7946=YES -lco COORDINATE_PRECISION=6 -simplify ${SIMPLIFY_TOLERANCE} \
+        PG:"host=${host} dbname=${database} port=${port} user=${user} password=${password}" -sql "${SQL}"
+
+        # It's need the jq tool utility (like: apt-get install jq)
+        cat ${OUTPUT_DATA}/${FN}.pretty.json | jq -c > ${OUTPUT_DATA}/${FN}.json
+
+        # remove the pretty json file
+        if [[ -f "${OUTPUT_DATA}/${FN}.pretty.json" ]]; then
+            rm ${OUTPUT_DATA}/${FN}.pretty.json
+        fi;
     fi;
-
-    # Query to load data
-    SQL="SELECT name, ${LOI_GEOM_COLUMN}_small as ${LOI_GEOM_COLUMN} FROM ${LOI_SCHEMA}.${TB}"
-    # read from Postgres and write into GeoJson file
-    ogr2ogr -f "GeoJSON" ${OUTPUT_DATA}/${FN}.json \
-    -lco WRITE_NAME=NO -lco RFC7946=YES -lco COORDINATE_PRECISION=6 \
-    PG:"host=${host} dbname=${database} port=${port} user=${user} password=${password}" -sql "${SQL}"
-    
-    # remove temp column
-    SQL="ALTER TABLE IF EXISTS ${LOI_SCHEMA}.${TB} DROP COLUMN IF EXISTS ${LOI_GEOM_COLUMN}_small;"
-    ${PG_BIN}/psql ${PG_CON} -t -c "${SQL}"
 }
 
 export_shape(){
     # Used to export LOI table to shapefile used into Dashboard Data Model process
     #
-    TB="${1}_loi" # Input Table Name
-    FN="${1}" # Output File Name
+    if [[ "${SHAPEFILE_EXPORT}" = "yes" ]]; then
     
-    # For municipalities we need a specific table model.
-    if [[ "${1}" = "municipality" ]]; then
-        TB="${1}_loi_dm"
-    fi;
+        TB="${1}_loi" # Input Table Name
+        FN="${1}" # Output File Name
+        
+        # For municipalities we need a specific table model.
+        if [[ "${1}" = "municipality" ]]; then
+            TB="${1}_loi_dm"
+        fi;
 
-    # Query to load data
-    SQL="SELECT name, geom FROM ${LOI_SCHEMA}.${TB}"
-    # read from Postgres and write into Shapefile
-    ogr2ogr -overwrite -f "ESRI Shapefile" ${OUTPUT_DATA} -nln ${FN} \
-    PG:"host=${host} dbname=${database} port=${port} user=${user} password=${password}" -sql "${SQL}"
+        # Query to load data
+        SQL="SELECT name, geom FROM ${LOI_SCHEMA}.${TB}"
+        # read from Postgres and write into Shapefile
+        ogr2ogr -overwrite -f "ESRI Shapefile" ${OUTPUT_DATA} -nln ${FN} \
+        PG:"host=${host} dbname=${database} port=${port} user=${user} password=${password}" -sql "${SQL}"
 
-    # store on ZIP
-    zip -j "${OUTPUT_DATA}/${FN}.zip" "${OUTPUT_DATA}/${FN}.shp" "${OUTPUT_DATA}/${FN}.shx" "${OUTPUT_DATA}/${FN}.prj" "${OUTPUT_DATA}/${FN}.dbf"
+        # store on ZIP
+        zip -j "${OUTPUT_DATA}/${FN}.zip" "${OUTPUT_DATA}/${FN}.shp" "${OUTPUT_DATA}/${FN}.shx" "${OUTPUT_DATA}/${FN}.prj" "${OUTPUT_DATA}/${FN}.dbf"
 
-    # remove old files
-    if [[ -f "${OUTPUT_DATA}/${FN}.shp" ]]; then
-        rm ${OUTPUT_DATA}/"${FN}".{shp,shx,prj,dbf}
+        # remove old files
+        if [[ -f "${OUTPUT_DATA}/${FN}.shp" ]]; then
+            rm ${OUTPUT_DATA}/"${FN}".{shp,shx,prj,dbf}
+        fi;
     fi;
 }

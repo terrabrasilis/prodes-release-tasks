@@ -18,17 +18,96 @@ No ports are exposed, runs only autonomous job on container starts.
 
 ## Configuration
 
-We have some configurations to make this scripts works.
+We have some configurations and patterns to make this scripts works.
 
-The main condition is to have a schema and a table for each LOI, Local Of Interest, in the database for which you want to generate the GeoJson output files. The schema need has a same name of biome, example: "amazonia", and the expected table names of each LOI is: indi, consunit, mun, uf
+### About Geometry simplification
+
+The current approach uses the [OGR simplify](https://gdal.org/programs/ogr2ogr.html#cmdoption-ogr2ogr-simplify) method to apply simplification into all Polygons of LOIs. There is no guarantee of topological consistency between features into GeoJson exported.
+
+You may need to change the tolerance factor using SIMPLIFY_TOLERANCE to set a value. The projection of the expected data is Geographic/SIRGAS2000 (EPSG:4674) and the unit values ​​are in degrees, therefore to define a tolerance value we use an approximation of 1 degree which is ~111000 m
+
+An example:
+
+If we want to use the 200 meter tolerance, the calculation is: 200 / 111000 = 0.0018
+
+```
+# the tolerance to simplify Polygons (use dot separator for thousands)
+SIMPLIFY_TOLERANCE="0.0018"
+```
+
+But be careful when increasing this value because the process may cause small polygons to disappear.
+
+#### Improve Simplification
+
+In the future we may use PostGIS methods to improve geometry simplification, but we need a newer version of PostgreSQL/PostGIS.
+This approach can use the PostGIS methods to apply simplification into all Polygons of LOIs.
+
+```sql
+-- To see the PostGIS version
+SELECT PostGIS_Full_Version();
+```
+
+To PostGIS major than or equal to 3.4.0, the best simplification is [ST_CoverageSimplify](https://postgis.net/docs/ST_CoverageSimplify.html)
+
+```
+Availability: 3.4.0
+Requires GEOS >= 3.12.0
+```
+
+To PostGIS minor than 3.4.0, we use the [ST_SimplifyPreserveTopology](https://postgis.net/docs/ST_SimplifyPreserveTopology.html) method.
+
+**IMPORTANT**
+We tested ST_SimplifyPreserveTopology but the GeoJson file resulting from the export was insufficient for the expected purpose, as the speed improvement in the application's frontend was small.
+
+
+### Schemas and Tables
+
+The main condition is to have the schema and table based structure as follows:
+
+ - One schema to each biome border or Legal Amazon border;
+ - One table for each LOI, cropped by the border and inside the related schema;
+
+The expected schema names of each border is: "amazonia" "amazonia_legal" "caatinga" "cerrado" "mata_atlantica" "pampa" "pantanal"
+The expected table names of each LOI is: municipality, state, ti, uc
+
+Database Structure Representation
+```
+amazonia (schema)
+       |
+       municipality (table)
+       state (table)
+       ti (table)
+       uc (table)
+
+cerrado (schema)
+      |
+      municipality (table)
+      state (table)
+      ti (table)
+      uc (table)
+```
+
+LOI tables Structure Representation
+```
+# columns for state, ti and uc
+nome character varying
+geom geometry(MultiPolygon,4674)
+
+# columns for municipality
+nome character varying
+geocodigo character varying
+geom geometry(MultiPolygon,4674)
+```
+
+### Other Settings
 
 Define a directory to store your output files and include a configuration file for the SGDB host that you want run the exportation task.
 
-The data storage directory is used to map to a volume inside the container, see the "Export Settings" and "Container configuration" sections.
+The data storage directory is used to map to a volume inside the container, see the "General Settings" and "Container Settings" sections.
 
-See the "Export Settings" section to find more setting options about the export task.
+See the "General Settings" section to find more setting options about the export task.
 
-### SGDB host configuration
+### SGDB Settings
 
 The "dbconf.sh" script searches for the "pgconfig.exportation" file within the root directory.
 
@@ -44,41 +123,59 @@ port=5432
 password="postgres"
 ```
 
-### Process Settings
+### General Settings
 
 The process expects some parameter definitions. These parameters are defined in the "export_tables_to_file_config.sh" script and have default values, they are:
 
 ```sh
-# Used as a database name suffix. Consider that the default database name is prodes_<biome>_nb_p<BASE_YEAR>
-BASE_YEAR="2023"
-#
+###############################################
+# General settings
+###############################################
 # Set the output directory (is mapped inside the container after run)
 BASE_PATH_DATA="/main/storage/exported/files"
 #
-# Fix geometries before export
-FIX_GEOM="no"
-# Fix UC names before export
-FIX_UCS="yes"
-# the table name of UCs into each PRODES database
-UC_TABLE_NAME="consunit"
-#
-# we expect that default column name for geometries of LOI is "geom"
-LOI_GEOM_COLUMN="geom"
-# we expect that default column name for names of LOI is "name"
-LOI_NAME_COLUMN="name"
-#
+# The database name used to apply changes and export auxiliary data
+DB_NAME="auxiliary_2022"
 # to read the tables or views from selected schema
 TABLE_TYPE='BASE TABLE'
 #TABLE_TYPE='VIEW'
 #
-# list of biomes as fraction of target database name. Consider that the default database name is prodes_<biome>_nb_p<BASE_YEAR>
-# PRODES_DBS=("pampa" "caatinga" "pantanal" "mata_atlantica" "cerrado" "amazonia" "amazonia_legal")
-PRODES_DBS=("mata_atlantica")
+###############################################
+# Settings to control the changes in LOI tables
+###############################################
+# Fix geometries before export
+FIX_GEOM="no"
+# Fix UC names before export
+FIX_UCS="yes"
+# the table name of UCs
+UC_TABLE_NAME="uc"
+# the tolerance to simplify Polygons (use dot separator for thousands)
+SIMPLIFY_TOLERANCE="0.0018"
+#
+###############################################
+# Settings about column pattern for LOI tables
+###############################################
+# we expect that default column name for geometries of LOI is "geom"
+LOI_GEOM_COLUMN="geom"
+# we expect that default column name for names of LOI is "nome"
+LOI_NAME_COLUMN="nome"
+#
+###############################################
+# Settings about what data will be exported
+###############################################
+#
+# The name of the schemas for each LOI cropp.
+LOI_SCHEMAS=("amazonia" "amazonia_legal" "caatinga" "cerrado" "mata_atlantica" "pampa" "pantanal")
+#
+# Control GeoJson exportation
+GEOJSON_EXPORT="yes"
+# Control Shapefile exportation
+SHAPEFILE_EXPORT="no"
 ```
 
 If you need to change these values, edit the "export_tables_to_file_config.sh" file inside the "lois-to-json-file/" directory on repository root.
 
-### Container configuration
+### Container Settings
 
 The exportation task need a directory to use as a docker volume where output data is written.
 
@@ -92,7 +189,7 @@ For raster option the output is located inside "pg-to-raster-file/" otherwise if
 
 ## Manual container run
 
-Before running, read the "Container configuration" session.
+Before running, read the "Container Settings" session.
 
 Using canonical form.
 ```sh
