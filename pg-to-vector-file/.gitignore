@@ -1,0 +1,7 @@
+**/pgconfig*
+**/*.log
+**/*.shp
+**/*.shx
+**/*.prj
+**/*.dbf
+**/*.zip

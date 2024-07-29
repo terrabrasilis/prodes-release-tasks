@@ -13,10 +13,12 @@ if [[ "${1}" = "vector" ]]; then
   DIR_TYPE="pg-to-vector-file"
 elif [[ "${1}" = "raster" ]]; then
   DIR_TYPE="pg-to-raster-file"
+elif [[ "${1}" = "json" ]]; then
+  DIR_TYPE="lois-to-json-file"
 else
   echo "You need provide some type of exportation."
   echo "------------------------------------------"
-  echo "The options are: vector or raster"
+  echo "The options are: vector, raster OR json"
   echo "Example: ./run-pg-export-to-file.sh vector up"
   exit
 fi;

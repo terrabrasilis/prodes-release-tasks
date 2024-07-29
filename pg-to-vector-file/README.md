@@ -101,7 +101,7 @@ Before running, read the "Container configuration" session.
 Using canonical form.
 ```sh
 # Call the script passing the type of exportation and command to docker:
-# - "vector" or "raster"
+# - "vector" or "raster" or "json"
 # - "up" or "down"
 ./run-pg-export-to-file.sh vector up
 ```

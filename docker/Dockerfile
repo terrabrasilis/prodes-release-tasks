@@ -14,6 +14,7 @@ RUN echo "" > /etc/apt/apt.conf.d/docker-clean \
     &&  apt-get install -y \
     tzdata \
     zip \
+    jq \
     grass-core \
     postgresql-client \
     python3-psycopg2 \

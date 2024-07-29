@@ -1,0 +1,8 @@
+**/pgconfig*
+**/*.log
+**/*.shp
+**/*.shx
+**/*.prj
+**/*.dbf
+**/*.json
+**/*.zip
