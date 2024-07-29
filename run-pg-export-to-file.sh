@@ -2,7 +2,7 @@
 #
 # Need a directory to use as a docker volume where output data is written.
 # Adjust the path in VOLUME_HOST if necessary.
-VOLUME_HOST=""
+VOLUME_HOST="/main/storage/exported/files"
 #
 # detect the location of this script
 SCRIPT_DIR=$(pwd)
