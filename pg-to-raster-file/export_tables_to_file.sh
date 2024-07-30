@@ -27,6 +27,10 @@ do
     echo "Processing the database: ${DB_NAME}"
     echo "----------------------------------------------"
 
+    # Set a default local directory if not set
+    if [[ "" = "${BASE_PATH_DATA}" ]]; then
+        BASE_PATH_DATA=`pwd`
+    fi;
     # The output directory for each database
     OUTPUT_DIR="${BASE_PATH_DATA}/${DB_NAME}/${schema}"
     # creating output directory to put files

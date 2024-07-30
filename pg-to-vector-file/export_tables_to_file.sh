@@ -30,6 +30,10 @@ do
     # the file name of GPKG file when SAME_FILE="yes"
     GPKG_FNAME="prodes_${DB_NAME}${gpkg_suffix}"
 
+    # Set a default local directory if not set
+    if [[ "" = "${BASE_PATH_DATA}" ]]; then
+        BASE_PATH_DATA=`pwd`
+    fi;
     # The output directory for each database
     OUTPUT_DATA="${BASE_PATH_DATA}/${database}/${schema}"
 
