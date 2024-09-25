@@ -12,6 +12,14 @@ PATH_BIN="/usr/bin"
 # load functions
 . ./functions_lib.sh
 
+# if raster mosaic is enabled, it needs temporary files, so disable tmp files removal.
+if [[ "${RASTERS_MOSAIC}" = "yes" ]];
+then
+    KEEP_TMP="yes"
+    # used to store one raster for each database
+    INPUT_FILES_MOSAIC=()
+fi;
+
 # loop to export all tables of each database for an schema define into pgconfig file
 for TARGET_NAME in ${PRODES_DBS[@]}
 do
@@ -32,7 +40,7 @@ do
         BASE_PATH_DATA=`pwd`
     fi;
     # The output directory for each database
-    OUTPUT_DIR="${BASE_PATH_DATA}/${DB_NAME}/${schema}"
+    OUTPUT_DIR="${BASE_PATH_DATA}/${DB_NAME}"
     # creating output directory to put files
     mkdir -p "${OUTPUT_DIR}"
 
@@ -55,33 +63,48 @@ do
         # get table name to burn
         TB_NAME=$(get_table_name "${TARGET_NAME}" "${TABLE}")
 
-        # define where clause if is cloud
-        WHERE=""
-        if [[ "${TABLE}" = "cloud" ]]; then
-            WHERE="WHERE image_date >= ( SELECT (extract(year from (MAX(image_date)::date))::text||'-01-01')::date FROM public.${TB_NAME} )"
-        fi;
-
-        if [[ ! "${TB_NAME}" = "" ]];
+        # test if table exists
+        TABLE_EXISTS=$(table_exists "${TB_NAME}")
+        if [[ "${TABLE_EXISTS}" = "${TB_NAME}" ]];
         then
-            # create temporary table with class as number
-            create_table_to_burn "${TB_NAME}" "${WHERE}"
 
-            # output file name
-            OUTPUT_FILE="${TB_NAME}_${BASE_YEAR}"
-            # store the generated file into input list used in next step
-            INPUT_FILES+=("${OUTPUT_FILE}.tif")
+            # define where clause if is cloud
+            WHERE=""
+            if [[ "${TABLE}" = "cloud" ]]; then
+                WHERE="WHERE image_date >= ( SELECT (extract(year from (MAX(image_date)::date))::text||'-01-01')::date FROM public.${TB_NAME} )"
+            fi;
 
-            # generate a color palette to current data
-            generate_palette_entries "${TB_NAME}" "${OUTPUT_DIR}" "${PGCONNECTION}"
+            if [[ ! "${TB_NAME}" = "" ]];
+            then
+                # create temporary table with class as number
+                create_table_to_burn "${TB_NAME}" "${WHERE}"
 
-            # store the style fractions for each table used in next step to build the final QML
-            QML_FRACTIONS+=("${TB_NAME}.sfl")
+                # output file name
+                OUTPUT_FILE="${TB_NAME}_${BASE_YEAR}"
+                
+                # generate a color palette to current data
+                generate_palette_entries "${TB_NAME}" "${OUTPUT_DIR}" "${PGCONNECTION}"
 
-            # rasterize vector table 
-            generate_raster "${TB_NAME}" "${BBOX}" "${PGCONNECTION}" "${OUTPUT_DIR}/${OUTPUT_FILE}"
+                # rasterize vector table 
+                generate_raster "${TB_NAME}" "${BBOX}" "${PGCONNECTION}" "${OUTPUT_DIR}/${OUTPUT_FILE}"
 
-            # drop the temporary table
-            drop_table_burn "${TB_NAME}"
+                # drop the temporary table
+                drop_table_burn "${TB_NAME}"
+
+                if [[ -f "${OUTPUT_DIR}/${TB_NAME}.sfl" ]];
+                then
+                    # store the style fractions for each table used in next step to build the final QML
+                    QML_FRACTIONS+=("${TB_NAME}.sfl")
+                fi;
+
+                if [[ -f "${OUTPUT_DIR}/${OUTPUT_FILE}.tif" ]];
+                then
+                    # store the generated file into input list used in next step
+                    INPUT_FILES+=("${OUTPUT_FILE}.tif")
+                fi;
+            fi;
+        else
+            echo "Table do not exists: ${TB_NAME}"
         fi;
     done
 
@@ -90,7 +113,12 @@ do
 
     # generate the final file with all intermediate files
     generate_final_raster "${INPUT_FILES}" "${OUTPUT_FILE}" "${OUTPUT_DIR}"
-
+    if [[ -f "${OUTPUT_DIR}/${OUTPUT_FILE}.tif" ]];
+    then
+        # store file name of final raster, used to make mosaic
+        INPUT_FILES_MOSAIC+=("${OUTPUT_DIR}/${OUTPUT_FILE}.tif")
+    fi;
+    
     # generate the style as QML file
     generate_qml_file "${QML_FRACTIONS}" "${OUTPUT_FILE}" "${OUTPUT_DIR}"
 
@@ -102,3 +130,21 @@ do
 
 # end of biome list
 done
+
+# if the mosaic raster is enable, join all rasters into one
+if [[ "${RASTERS_MOSAIC}" = "yes" ]];
+then
+    INPUT_FILES_MOSAIC=$(echo ${INPUT_FILES_MOSAIC[@]})
+    OUTPUT_FILE="prodes_brasil_${BASE_YEAR}"
+    # The output directory for mosaic
+    OUTPUT_DIR="${BASE_PATH_DATA}"
+    
+    # generate the final file with all intermediate files
+    generate_final_raster "${INPUT_FILES_MOSAIC}" "${OUTPUT_FILE}" "${OUTPUT_DIR}"
+
+    QML_FRACTIONS=("${OUTPUT_FILE}.sfl")
+    generate_mosaic_palette_entries "${OUTPUT_FILE}" "${OUTPUT_DIR}"
+
+    # generate the style as QML file
+    generate_qml_file "${QML_FRACTIONS}" "${OUTPUT_FILE}" "${OUTPUT_DIR}"
+fi;

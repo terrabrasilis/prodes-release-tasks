@@ -108,6 +108,14 @@ get_class_number(){
     esac
 }
 
+table_exists(){
+    TB="${1}"
+
+    SQL="SELECT table_name FROM information_schema.tables WHERE table_name='${TB}';"
+    EXISTS=($(${PATH_BIN}/psql ${PG_CON} -t -c "${SQL};"))
+    echo "${EXISTS}"
+}
+
 create_table_to_burn(){
     TB="${1}"
     WHERE=""
@@ -190,6 +198,14 @@ generate_palette_entries(){
     python3 build_qml.py
 }
 
+generate_mosaic_palette_entries(){
+    # Used to read inside python script
+    export FILE_NAME="${1}"
+    export DATA_DIR="${2}"
+    # used to generate and store each fraction of QML palette entry on data dir to build the final QML file
+    python3 build_mosaic_qml.py
+}
+
 generate_report_file() {
     FILE_NAME="${1}"
     DATA_DIR="${2}"
@@ -211,10 +227,9 @@ generate_final_zip_file(){
     zip -j ${DATA_DIR}/${FILE_NAME}.zip ${DATA_DIR}/${FILE_NAME}.*
 }
 
-generate_qml_file(){
-    QML_FRACTIONS="${1}"
-    OUTPUT_FILE="${2}"
-    DATA_DIR="${3}"
+add_qml_start(){
+    OUTPUT_FILE="${1}"
+    DATA_DIR="${2}"
 
     echo "<!DOCTYPE qgis PUBLIC 'http://mrcc.com/qgis.dtd' 'SYSTEM'>" > "${DATA_DIR}/${OUTPUT_FILE}.qml"
     echo "<qgis maxScale=\"0\" styleCategories=\"AllStyleCategories\" version=\"3.10.4-A Coruña\" hasScaleBasedVisibilityFlag=\"0\" minScale=\"1e+08\">" >> "${DATA_DIR}/${OUTPUT_FILE}.qml"
@@ -240,16 +255,11 @@ generate_qml_file(){
     echo "<stdDevFactor>2</stdDevFactor>" >> "${DATA_DIR}/${OUTPUT_FILE}.qml"
     echo "</minMaxOrigin>" >> "${DATA_DIR}/${OUTPUT_FILE}.qml"
     echo "<colorPalette>" >> "${DATA_DIR}/${OUTPUT_FILE}.qml"
+}
 
-    for QML_FRACTION in ${QML_FRACTIONS[@]}
-    do
-        FRACTION=$(cat "${DATA_DIR}/${QML_FRACTION}")
-        echo "${FRACTION}" >> "${DATA_DIR}/${OUTPUT_FILE}.qml"
-        if [[ "${KEEP_TMP}" = "no" ]];
-        then
-            rm "${DATA_DIR}/${QML_FRACTION}"
-        fi;
-    done;
+add_qml_end(){
+    OUTPUT_FILE="${1}"
+    DATA_DIR="${2}"
 
     echo "</colorPalette>" >> "${DATA_DIR}/${OUTPUT_FILE}.qml"
     echo "<colorramp type=\"cpt-city\" name=\"[source]\">" >> "${DATA_DIR}/${OUTPUT_FILE}.qml"
@@ -265,4 +275,25 @@ generate_qml_file(){
     echo "</pipe>" >> "${DATA_DIR}/${OUTPUT_FILE}.qml"
     echo "<blendMode>0</blendMode>" >> "${DATA_DIR}/${OUTPUT_FILE}.qml"
     echo "</qgis>" >> "${DATA_DIR}/${OUTPUT_FILE}.qml"
+}
+
+generate_qml_file(){
+    QML_FRACTIONS="${1}"
+    OUTPUT_FILE="${2}"
+    DATA_DIR="${3}"
+
+    add_qml_start "${OUTPUT_FILE}" "${DATA_DIR}"
+
+    for QML_FRACTION in ${QML_FRACTIONS[@]}
+    do
+        FRACTION=$(cat "${DATA_DIR}/${QML_FRACTION}")
+        echo "${FRACTION}" >> "${DATA_DIR}/${OUTPUT_FILE}.qml"
+
+        if [[ "${KEEP_TMP}" = "no" ]];
+        then
+            rm "${DATA_DIR}/${QML_FRACTION}"
+        fi;
+    done;
+
+    add_qml_end "${OUTPUT_FILE}" "${DATA_DIR}"
 }

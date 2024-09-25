@@ -2,7 +2,7 @@
 #
 # Need a directory to use as a docker volume where output data is written.
 # Adjust the path in VOLUME_HOST if necessary.
-VOLUME_HOST="/main/storage/exported/files"
+VOLUME_HOST=""
 #
 # detect the location of this script
 SCRIPT_DIR=$(pwd)
@@ -34,7 +34,8 @@ if [[ "$2" != "up" && "$2" != "down" ]]; then
 
 else
   if [[ "${VOLUME_HOST}" = "" ]]; then
-    VOLUME_HOST="${SCRIPT_DIR}/${DIR_TYPE}"
+    VOLUME_HOST="${SCRIPT_DIR}/${DIR_TYPE}/files"
+    mkdir -p "${VOLUME_HOST}"
   fi;
 
   if [[ "$2" == "up" ]]; then
