@@ -117,11 +117,12 @@ class BuildQML:
         return self.forest()
 
 
-    def __get_palette_fraction(self):
+    def __build_palette_fractions(self):
         """
         Used to get each class number and name, get new colors, and generate the palette entries.
         """
-        items=[]
+        qml_fraction=[]
+        sld_fraction=[]
         sql=f"SELECT class_number, class_name FROM public.burn_{self.TB_NAME} GROUP BY 1,2 ORDER BY 1 ASC"
         class_data=self.__execute_sql(sql)
         colors=self.__get_colors(len(class_data))
@@ -131,9 +132,10 @@ class BuildQML:
             class_name=cdata[1]
             color=colors[c]
             c+=1
-            items.append(f"<paletteEntry color=\"{color}\" label=\"{class_number} {class_name}\" value=\"{class_number}\" alpha=\"255\"/>")
+            qml_fraction.append(f"<paletteEntry color=\"{color}\" label=\"{class_number} {class_name}\" value=\"{class_number}\" alpha=\"255\"/>")
+            sld_fraction.append(f"<sld:ColorMapEntry color=\"{color}\" label=\"{class_number} {class_name}\" quantity=\"{class_number}\"/>")
 
-        return "\n".join(items)
+        return "\n".join(qml_fraction), "\n".join(sld_fraction)
 
     def __execute_sql(self, sql: str):
         curr = None
@@ -154,13 +156,17 @@ class BuildQML:
         try:
             if os.path.isdir(self.DATA_DIR):
                 path_dir=f"{self.DATA_DIR}"
-                file_name=f"{self.TB_NAME}.sfl"
-                with open(os.path.join(path_dir,file_name), "w") as file_sfl:
-                    file_sfl.write(self.__get_palette_fraction())
+                file_name_sfl=f"{self.TB_NAME}.sfl"
+                file_name_sld=f"{self.TB_NAME}.sldf"
+                qml_fraction, sld_fraction = self.__build_palette_fractions()
+                with open(os.path.join(path_dir,file_name_sfl), "w") as file_sfl:
+                    file_sfl.write(qml_fraction)
+                with open(os.path.join(path_dir,file_name_sld), "w") as file_sld:
+                    file_sld.write(sld_fraction)
         except Exception as e:
             print(f"Failure on store QML fragment.{e}")
         finally:
-            print(f"Store QML fragment: {file_name}")
+            print(f"Store QML fragment in: {file_name_sfl} and {file_name_sld}")
 
         
 

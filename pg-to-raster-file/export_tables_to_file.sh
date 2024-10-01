@@ -57,6 +57,7 @@ do
     # ------------------------------------------------ #
     INPUT_FILES=()
     QML_FRACTIONS=()
+    SLD_FRACTIONS=()
     TBS_NAME=()
     # define tables of type data to insert into raster file
     TABLES=("border" "no_forest" "hydrography" "accumulated" "yearly" "residual" "cloud")
@@ -105,6 +106,16 @@ do
                     QML_FRACTIONS+=("${TB_NAME}.sfl")
                 fi;
 
+                if [[ -f "${OUTPUT_DIR}/${TB_NAME}.sldf" ]];
+                then
+                    # store the style fractions for each table used in next step to build the final SLD
+                    SLD_FRACTIONS+=("${TB_NAME}.sldf")
+
+                    # generate the style as SLD file for each table
+                    SLD_FRACTION_TABLE=("${TB_NAME}.sldf")
+                    generate_sld_file "${SLD_FRACTION_TABLE}" "${OUTPUT_FILE}" "${OUTPUT_DIR}"
+                fi;
+
                 if [[ -f "${OUTPUT_DIR}/${OUTPUT_FILE}.tif" ]];
                 then
                     # store the generated file into input list used in next step
@@ -129,6 +140,9 @@ do
     
     # generate the style as QML file
     generate_qml_file "${QML_FRACTIONS}" "${OUTPUT_FILE}" "${OUTPUT_DIR}"
+    
+    # generate the style as SLD file
+    generate_sld_file "${SLD_FRACTIONS}" "${OUTPUT_FILE}" "${OUTPUT_DIR}"
 
     # generate the report file
     generate_report_file "${OUTPUT_FILE}" "${OUTPUT_DIR}"

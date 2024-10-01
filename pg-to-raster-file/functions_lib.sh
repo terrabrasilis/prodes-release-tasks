@@ -220,16 +220,16 @@ generate_palette_entries(){
     export TB_NAME="${1}"
     export DATA_DIR="${2}"
     export PG_CONN="${3}"
-    # used to generate and store each fraction of QML palette entry on data dir to build the final QML file
-    python3 build_qml.py
+    # used to generate and store each fraction of QML and SLD palette entries on data dir to build the final style files
+    python3 build_style_fraction.py
 }
 
 generate_mosaic_palette_entries(){
     # Used to read inside python script
     export FILE_NAME="${1}"
     export DATA_DIR="${2}"
-    # used to generate and store each fraction of QML palette entry on data dir to build the final QML file
-    python3 build_mosaic_qml.py
+    # used to join each QML and SLD biome files into one mosaic style file
+    python3 build_mosaic_style.py
 }
 
 generate_report_file() {
@@ -314,12 +314,68 @@ generate_qml_file(){
     do
         FRACTION=$(cat "${DATA_DIR}/${QML_FRACTION}")
         echo "${FRACTION}" >> "${DATA_DIR}/${OUTPUT_FILE}.qml"
-
-        if [[ "${KEEP_TMP}" = "no" ]];
-        then
-            rm "${DATA_DIR}/${QML_FRACTION}"
-        fi;
     done;
 
     add_qml_end "${OUTPUT_FILE}" "${DATA_DIR}"
+}
+
+add_sld_start(){
+    OUTPUT_FILE="${1}"
+    DATA_DIR="${2}"
+    LAYER_NAME="${3}"
+
+    echo "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" > "${DATA_DIR}/${OUTPUT_FILE}.sld"
+    echo "<StyledLayerDescriptor xmlns=\"http://www.opengis.net/sld\" version=\"1.0.0\" xmlns:gml=\"http://www.opengis.net/gml\" xmlns:sld=\"http://www.opengis.net/sld\" xmlns:ogc=\"http://www.opengis.net/ogc\">" >> "${DATA_DIR}/${OUTPUT_FILE}.sld"
+    echo "<UserLayer>" >> "${DATA_DIR}/${OUTPUT_FILE}.sld"
+    echo "<sld:LayerFeatureConstraints>" >> "${DATA_DIR}/${OUTPUT_FILE}.sld"
+    echo "<sld:FeatureTypeConstraint/>" >> "${DATA_DIR}/${OUTPUT_FILE}.sld"
+    echo "</sld:LayerFeatureConstraints>" >> "${DATA_DIR}/${OUTPUT_FILE}.sld"
+    echo "<sld:UserStyle>" >> "${DATA_DIR}/${OUTPUT_FILE}.sld"
+    echo "<sld:Name>${OUTPUT_FILE}</sld:Name>" >> "${DATA_DIR}/${OUTPUT_FILE}.sld"
+    echo "<sld:FeatureTypeStyle>" >> "${DATA_DIR}/${OUTPUT_FILE}.sld"
+    echo "<sld:Rule>" >> "${DATA_DIR}/${OUTPUT_FILE}.sld"
+    echo "<sld:RasterSymbolizer>" >> "${DATA_DIR}/${OUTPUT_FILE}.sld"
+    echo "<sld:ChannelSelection>" >> "${DATA_DIR}/${OUTPUT_FILE}.sld"
+    echo "<sld:GrayChannel>" >> "${DATA_DIR}/${OUTPUT_FILE}.sld"
+    echo "<sld:SourceChannelName>1</sld:SourceChannelName>" >> "${DATA_DIR}/${OUTPUT_FILE}.sld"
+    echo "</sld:GrayChannel>" >> "${DATA_DIR}/${OUTPUT_FILE}.sld"
+    echo "</sld:ChannelSelection>" >> "${DATA_DIR}/${OUTPUT_FILE}.sld"
+    echo "<sld:ColorMap type=\"values\">" >> "${DATA_DIR}/${OUTPUT_FILE}.sld"
+}
+
+add_sld_end(){
+    OUTPUT_FILE="${1}"
+    DATA_DIR="${2}"
+
+    echo "</sld:ColorMap>" >> "${DATA_DIR}/${OUTPUT_FILE}.sld"
+    echo "</sld:RasterSymbolizer>" >> "${DATA_DIR}/${OUTPUT_FILE}.sld"
+    echo "</sld:Rule>" >> "${DATA_DIR}/${OUTPUT_FILE}.sld"
+    echo "</sld:FeatureTypeStyle>" >> "${DATA_DIR}/${OUTPUT_FILE}.sld"
+    echo "</sld:UserStyle>" >> "${DATA_DIR}/${OUTPUT_FILE}.sld"
+    echo "</UserLayer>" >> "${DATA_DIR}/${OUTPUT_FILE}.sld"
+    echo "</StyledLayerDescriptor>" >> "${DATA_DIR}/${OUTPUT_FILE}.sld"
+
+}
+
+generate_sld_file(){
+    SLD_FRACTIONS="${1}"
+    OUTPUT_FILE="${2}"
+    DATA_DIR="${3}"
+
+    add_sld_start "${OUTPUT_FILE}" "${DATA_DIR}"
+
+    for SLD_FRACTION in ${SLD_FRACTIONS[@]}
+    do
+        FRACTION=$(cat "${DATA_DIR}/${SLD_FRACTION}")
+        echo "${FRACTION}" >> "${DATA_DIR}/${OUTPUT_FILE}.sld"
+    done;
+
+    add_sld_end "${OUTPUT_FILE}" "${DATA_DIR}"
+}
+
+remove_temporary_files(){
+    if [[ "${KEEP_TMP}" = "no" ]];
+    then
+        rm "${DATA_DIR}/*.sfl"
+    fi;
 }
