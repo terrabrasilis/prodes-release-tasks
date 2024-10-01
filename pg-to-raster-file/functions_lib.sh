@@ -60,6 +60,32 @@ get_accumulated_table_name(){
     echo "${TB}"
 }
 
+# ############################
+# NF data is only in Amazonia
+# ############################
+get_yearly_nf_table_name(){
+    echo "yearly_deforestation_nf_biome"
+}
+
+get_residual_nf_table_name(){
+    echo "residual_nf_biome"
+}
+
+get_hydrography_nf_table_name(){
+    echo "hydrography_nf_biome"
+}
+
+get_cloud_nf_table_name(){
+    echo "cloud_nf_biome"
+}
+
+get_accumulated_nf_table_name(){
+    echo "accumulated_deforestation_2000_nf_biome"
+}
+# ############################
+# end of NF data
+# ############################
+
 get_border_table_name(){
     TARGET="${1}"
     # default name

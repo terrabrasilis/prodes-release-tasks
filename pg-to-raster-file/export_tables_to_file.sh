@@ -57,7 +57,15 @@ do
     # ------------------------------------------------ #
     INPUT_FILES=()
     QML_FRACTIONS=()
+    TBS_NAME=()
+    # define tables of type data to insert into raster file
     TABLES=("border" "no_forest" "hydrography" "accumulated" "yearly" "residual" "cloud")
+    # for amazonia we must include data for no forest areas
+    if [[ "${DB_NAME}" = "amazonia" ]];
+    then
+        TABLES+=("hydrography_nf" "accumulated_nf" "yearly_nf" "residual_nf" "cloud_nf")
+    fi;
+
     for TABLE in ${TABLES[@]}
     do
         # get table name to burn
@@ -70,7 +78,7 @@ do
 
             # define where clause if is cloud
             WHERE=""
-            if [[ "${TABLE}" = "cloud" ]]; then
+            if [[ "${TABLE}" = "cloud" || "${TABLE}" = "cloud_nf" ]]; then
                 WHERE="WHERE image_date >= ( SELECT (extract(year from (MAX(image_date)::date))::text||'-01-01')::date FROM public.${TB_NAME} )"
             fi;
 
@@ -88,8 +96,8 @@ do
                 # rasterize vector table 
                 generate_raster "${TB_NAME}" "${BBOX}" "${PGCONNECTION}" "${OUTPUT_DIR}/${OUTPUT_FILE}"
 
-                # drop the temporary table
-                drop_table_burn "${TB_NAME}"
+                # store the table name to clean the database at the end
+                TBS_NAME+=("${TB_NAME}")
 
                 if [[ -f "${OUTPUT_DIR}/${TB_NAME}.sfl" ]];
                 then
@@ -127,6 +135,12 @@ do
 
     # generate the ZIP file
     generate_final_zip_file "${OUTPUT_FILE}" "${OUTPUT_DIR}"
+
+    # drop the temporary tables
+    for TB in ${TBS_NAME[@]}
+    do
+        drop_table_burn "${TB}"
+    done
 
 # end of biome list
 done
