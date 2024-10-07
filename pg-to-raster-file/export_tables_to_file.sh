@@ -62,7 +62,7 @@ do
     # define tables of type data to insert into raster file
     TABLES=("border" "no_forest" "hydrography" "accumulated" "yearly" "residual" "cloud")
     # for amazonia we must include data for no forest areas
-    if [[ "${DB_NAME}" = "amazonia" ]];
+    if [[ "${TARGET_NAME}" = "amazonia" ]];
     then
         TABLES+=("hydrography_nf" "accumulated_nf" "yearly_nf" "residual_nf" "cloud_nf")
     fi;
@@ -83,44 +83,41 @@ do
                 WHERE="WHERE image_date >= ( SELECT (extract(year from (MAX(image_date)::date))::text||'-01-01')::date FROM public.${TB_NAME} )"
             fi;
 
-            if [[ ! "${TB_NAME}" = "" ]];
+            # create temporary table with class as number
+            create_table_to_burn "${TB_NAME}" "${WHERE}"
+
+            # output file name
+            OUTPUT_FILE="${TB_NAME}_${BASE_YEAR}"
+            
+            # generate a color palette to current data
+            generate_palette_entries "${TB_NAME}" "${OUTPUT_DIR}" "${PGCONNECTION}"
+
+            # rasterize vector table 
+            generate_raster "${TB_NAME}" "${BBOX}" "${PGCONNECTION}" "${OUTPUT_DIR}/${OUTPUT_FILE}"
+
+            # store the table name to clean the database at the end
+            TBS_NAME+=("${TB_NAME}")
+
+            if [[ -f "${OUTPUT_DIR}/${TB_NAME}.sfl" ]];
             then
-                # create temporary table with class as number
-                create_table_to_burn "${TB_NAME}" "${WHERE}"
+                # store the style fractions for each table used in next step to build the final QML
+                QML_FRACTIONS+=("${TB_NAME}.sfl")
+            fi;
 
-                # output file name
-                OUTPUT_FILE="${TB_NAME}_${BASE_YEAR}"
-                
-                # generate a color palette to current data
-                generate_palette_entries "${TB_NAME}" "${OUTPUT_DIR}" "${PGCONNECTION}"
+            if [[ -f "${OUTPUT_DIR}/${TB_NAME}.sldf" ]];
+            then
+                # store the style fractions for each table used in next step to build the final SLD
+                SLD_FRACTIONS+=("${TB_NAME}.sldf")
 
-                # rasterize vector table 
-                generate_raster "${TB_NAME}" "${BBOX}" "${PGCONNECTION}" "${OUTPUT_DIR}/${OUTPUT_FILE}"
+                # generate the style as SLD file for each table
+                SLD_FRACTION_TABLE=("${TB_NAME}.sldf")
+                generate_sld_file "${SLD_FRACTION_TABLE}" "${OUTPUT_FILE}" "${OUTPUT_DIR}"
+            fi;
 
-                # store the table name to clean the database at the end
-                TBS_NAME+=("${TB_NAME}")
-
-                if [[ -f "${OUTPUT_DIR}/${TB_NAME}.sfl" ]];
-                then
-                    # store the style fractions for each table used in next step to build the final QML
-                    QML_FRACTIONS+=("${TB_NAME}.sfl")
-                fi;
-
-                if [[ -f "${OUTPUT_DIR}/${TB_NAME}.sldf" ]];
-                then
-                    # store the style fractions for each table used in next step to build the final SLD
-                    SLD_FRACTIONS+=("${TB_NAME}.sldf")
-
-                    # generate the style as SLD file for each table
-                    SLD_FRACTION_TABLE=("${TB_NAME}.sldf")
-                    generate_sld_file "${SLD_FRACTION_TABLE}" "${OUTPUT_FILE}" "${OUTPUT_DIR}"
-                fi;
-
-                if [[ -f "${OUTPUT_DIR}/${OUTPUT_FILE}.tif" ]];
-                then
-                    # store the generated file into input list used in next step
-                    INPUT_FILES+=("${OUTPUT_FILE}.tif")
-                fi;
+            if [[ -f "${OUTPUT_DIR}/${OUTPUT_FILE}.tif" ]];
+            then
+                # store the generated file into input list used in next step
+                INPUT_FILES+=("${OUTPUT_FILE}.tif")
             fi;
         else
             echo "Table do not exists: ${TB_NAME}"

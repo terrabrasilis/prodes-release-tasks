@@ -147,7 +147,7 @@ class BuildQML:
             rows = curr.fetchall()
             return rows if rows else None
         except Exception as e:
-            print("Failure on exec SQL into Database. Error: {e}")
+            print(f"Failure on exec SQL into Database. Error: {e}")
             raise e
         finally:
             if(conn and not conn.closed): conn.close()

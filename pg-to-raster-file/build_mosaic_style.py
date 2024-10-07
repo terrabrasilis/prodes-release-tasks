@@ -53,7 +53,7 @@ class BuildMosaicStyle:
         try:
             for type_file in self.types:
                 self.mainFractions={}
-                file_name=f"{file_name}.{type_file}"
+                file_name=f"{self.FILE_NAME}.{type_file}"
                 if os.path.isdir(self.DATA_DIR):
                     files=self.__listFractionFiles(type=type_file)
                     for f in files:
