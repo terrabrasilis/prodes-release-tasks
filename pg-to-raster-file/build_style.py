@@ -4,9 +4,12 @@ from xml.etree import ElementTree as xml_tag
 
 class BuildStyle:
     """
-    Create main style entries from each style fraction.
+    Create main style entries for each style fraction.
 
-    To join in one QML and one SLD fraction file from all fractions from each table or each biome.
+    To merge into one QML fraction file and one SLD using all fractions from each table or each biome.
+
+    The QML format is used for styling in QGIs.
+    The SLD format is used for styling in GeoServer.
     """
 
     def __init__(self, output_file_name="prodes_brasil"):
