@@ -15,10 +15,12 @@ PATH_BIN="/usr/bin"
 # if raster mosaic is enabled, it needs temporary files, so disable tmp files removal.
 if [[ "${RASTERS_MOSAIC}" = "yes" ]];
 then
-    KEEP_TMP="yes"
     # used to store one raster for each database
     INPUT_FILES_MOSAIC=()
 fi;
+
+# to store dbnames used to clean temporary files in the end
+DB_NAMES=()
 
 # loop to export all tables of each database for an schema define into pgconfig file
 for TARGET_NAME in ${PRODES_DBS[@]}
@@ -34,6 +36,9 @@ do
     echo ""
     echo "Processing the database: ${DB_NAME}"
     echo "----------------------------------------------"
+
+    # used in the end
+    DB_NAMES+=("${DB_NAME}")
 
     # Set a default local directory if not set
     if [[ "" = "${BASE_PATH_DATA}" ]]; then
@@ -56,8 +61,6 @@ do
     # GENERATE ONE RASTER TO EACH TABLE AS INPUT FILES
     # ------------------------------------------------ #
     INPUT_FILES=()
-    QML_FRACTIONS=()
-    SLD_FRACTIONS=()
     TBS_NAME=()
     # define tables of type data to insert into raster file
     TABLES=("border" "no_forest" "hydrography" "accumulated" "yearly" "residual" "cloud")
@@ -98,22 +101,6 @@ do
             # store the table name to clean the database at the end
             TBS_NAME+=("${TB_NAME}")
 
-            if [[ -f "${OUTPUT_DIR}/${TB_NAME}.sfl" ]];
-            then
-                # store the style fractions for each table used in next step to build the final QML
-                QML_FRACTIONS+=("${TB_NAME}.sfl")
-            fi;
-
-            if [[ -f "${OUTPUT_DIR}/${TB_NAME}.sldf" ]];
-            then
-                # store the style fractions for each table used in next step to build the final SLD
-                SLD_FRACTIONS+=("${TB_NAME}.sldf")
-
-                # generate the style as SLD file for each table
-                SLD_FRACTION_TABLE=("${TB_NAME}.sldf")
-                generate_sld_file "${SLD_FRACTION_TABLE}" "${OUTPUT_FILE}" "${OUTPUT_DIR}"
-            fi;
-
             if [[ -f "${OUTPUT_DIR}/${OUTPUT_FILE}.tif" ]];
             then
                 # store the generated file into input list used in next step
@@ -127,18 +114,24 @@ do
     INPUT_FILES=$(echo ${INPUT_FILES[@]})
     OUTPUT_FILE="prodes_${TARGET_NAME}_${BASE_YEAR}"
 
-    # generate the final file with all intermediate files
+    # generate the final file with all intermediary files
     generate_final_raster "${INPUT_FILES}" "${OUTPUT_FILE}" "${OUTPUT_DIR}"
-    if [[ -f "${OUTPUT_DIR}/${OUTPUT_FILE}.tif" ]];
+
+    # store file name of final raster, used to make mosaic
+    if [[ "${RASTERS_MOSAIC}" = "yes" && -f "${OUTPUT_DIR}/${OUTPUT_FILE}.tif" ]];
     then
-        # store file name of final raster, used to make mosaic
         INPUT_FILES_MOSAIC+=("${OUTPUT_DIR}/${OUTPUT_FILE}.tif")
     fi;
+
+    # join all style fractions, sfl and sldf into one style file for each style format
+    generate_main_palette_entries "${OUTPUT_FILE}" "${OUTPUT_DIR}"
     
     # generate the style as QML file
+    QML_FRACTIONS=("${OUTPUT_FILE}.sfl")
     generate_qml_file "${QML_FRACTIONS}" "${OUTPUT_FILE}" "${OUTPUT_DIR}"
     
     # generate the style as SLD file
+    SLD_FRACTIONS=("${OUTPUT_FILE}.sldf")
     generate_sld_file "${SLD_FRACTIONS}" "${OUTPUT_FILE}" "${OUTPUT_DIR}"
 
     # generate the report file
@@ -167,9 +160,18 @@ then
     # generate the final file with all intermediate files
     generate_final_raster "${INPUT_FILES_MOSAIC}" "${OUTPUT_FILE}" "${OUTPUT_DIR}"
 
-    QML_FRACTIONS=("${OUTPUT_FILE}.sfl")
-    generate_mosaic_palette_entries "${OUTPUT_FILE}" "${OUTPUT_DIR}"
+    # join all style fractions into one style file for each style format, QML and SLD
+    generate_main_palette_entries "${OUTPUT_FILE}" "${OUTPUT_DIR}"
 
     # generate the style as QML file
+    QML_FRACTIONS=("${OUTPUT_FILE}.sfl")
     generate_qml_file "${QML_FRACTIONS}" "${OUTPUT_FILE}" "${OUTPUT_DIR}"
+    
+    # generate the style as SLD file
+    SLD_FRACTIONS=("${OUTPUT_FILE}.sldf")
+    generate_sld_file "${SLD_FRACTIONS}" "${OUTPUT_FILE}" "${OUTPUT_DIR}"
 fi;
+
+# remove the temporary files to clean the output dirs
+DB_NAMES=$(echo ${DB_NAMES[@]})
+remove_temporary_files "${DB_NAMES}" "${BASE_PATH_DATA}"

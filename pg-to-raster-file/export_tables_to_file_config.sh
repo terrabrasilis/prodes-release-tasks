@@ -11,9 +11,9 @@ BASE_PATH_DATA="/main/storage/exported/files"
 PRODES_DBS=("amazonia")
 #
 #
-# keep temporary files and tables?
-KEEP_TMP="no"
+# remove temporary files and tables?
+REMOVE_TMP_FILES="yes"
 #
 #
 # join all rasters into a single file
-RASTERS_MOSAIC="yes"
+RASTERS_MOSAIC="no"

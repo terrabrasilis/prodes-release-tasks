@@ -158,7 +158,7 @@ create_table_to_burn(){
 }
 
 drop_table_burn() {
-    if [[ "${KEEP_TMP}" = "no" ]];
+    if [[ "${REMOVE_TMP_FILES}" = "yes" ]];
     then
         TB="${1}"
         SQL="DROP TABLE IF EXISTS public.burn_${TB}"
@@ -206,12 +206,6 @@ generate_final_raster(){
 
     gdal_translate -of GTiff -co "COMPRESS=LZW" -co BIGTIFF=YES "${OUTPUT_FILE}.vrt" "${OUTPUT_FILE}.tif"
 
-    if [[ "${KEEP_TMP}" = "no" ]];
-    then
-        rm "${OUTPUT_FILE}.vrt"
-        rm ${INPUT_FILES}
-    fi;
-
     cd -
 }
 
@@ -224,12 +218,12 @@ generate_palette_entries(){
     python3 build_style_fraction.py
 }
 
-generate_mosaic_palette_entries(){
+generate_main_palette_entries(){
     # Used to read inside python script
     export FILE_NAME="${1}"
     export DATA_DIR="${2}"
     # used to join each QML and SLD biome files into one mosaic style file
-    python3 build_mosaic_style.py
+    python3 build_style.py
 }
 
 generate_report_file() {
@@ -374,8 +368,14 @@ generate_sld_file(){
 }
 
 remove_temporary_files(){
-    if [[ "${KEEP_TMP}" = "no" ]];
+    DB_NAMES="${1}"
+    BASE_DIR="${2}"
+
+    if [[ "${REMOVE_TMP_FILES}" = "yes" ]];
     then
-        rm "${DATA_DIR}/*.sfl"
+        for DBNAME in ${DB_NAMES[@]}
+        do
+            rm ${BASE_DIR}/${DBNAME}/*.{sfl,sldf,vrt}
+        done;
     fi;
 }
