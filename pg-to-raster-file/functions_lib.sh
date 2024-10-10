@@ -209,6 +209,41 @@ generate_final_raster(){
     cd -
 }
 
+generate_fires_dashboard_products(){
+    INPUT_FILE="${1}"
+    DATA_DIR="${2}"
+    BASE_YEAR="${3}"
+    PRODUCT="${4}"
+
+    # calc the pixel value that represents the consolidate deforestation
+    Y=$(( ${BASE_YEAR} - 2000 ))
+    PV=$(( ${Y} - 3 ))
+    CALC=""
+
+    if [[ "p1" = "${PRODUCT}" ]]; then
+        # generate a map only with forest + no-forest + hidrography
+        CALC="((A==101)*101 + (A==91)*91 + (A==100)*100 + 100*logical_and(A>=0,A<=90))"
+    elif [[ "p2" = "${PRODUCT}" ]]; then
+        # generate a map only with consolidate deforestation from more than 3 years ago
+        CALC="(10*logical_and(A>=0,A<=${PV}) + 10*logical_and(A>=50,A<=90))"
+    elif [[ "p3" = "${PRODUCT}" ]]; then
+        # generate a map only with recent deforestation less than 3 years old
+        CALC="(15*logical_and(A>${PV},A<=49))"
+    else
+        echo "unrecognized option for product: ${PRODUCT}"
+        exit
+    fi;
+
+    cd ${DATA_DIR}
+
+    gdal_calc.py --co="COMPRESS=LZW" --co="BIGTIFF=YES" --NoDataValue=0 \
+    -A "${INPUT_FILE}.tif" --type=Byte --quiet \
+    --calc="${CALC}" \
+    --outfile="fires_dashboard_prodes_${PRODUCT}.tif"
+
+    cd -
+}
+
 generate_palette_entries(){
     # Used to read inside python script
     export TB_NAME="${1}"

@@ -160,6 +160,15 @@ then
     # generate the final file with all intermediate files
     generate_final_raster "${INPUT_FILES_MOSAIC}" "${OUTPUT_FILE}" "${OUTPUT_DIR}"
 
+    # generate a base map from prodes with forest+non-forest+hydrography to use in the fires dashboard
+    generate_fires_dashboard_products "${OUTPUT_FILE}" "${OUTPUT_DIR}" "${BASE_YEAR}" "p1"
+
+    # generate a map from deforestation data from more than 3 years ago to use on the fires dashboard
+    generate_fires_dashboard_products "${OUTPUT_FILE}" "${OUTPUT_DIR}" "${BASE_YEAR}" "p2"
+
+    # generate a map only with recent deforestation less than 3 years old
+    generate_fires_dashboard_products "${OUTPUT_FILE}" "${OUTPUT_DIR}" "${BASE_YEAR}" "p3"
+
     # join all style fractions into one style file for each style format, QML and SLD
     generate_main_palette_entries "${OUTPUT_FILE}" "${OUTPUT_DIR}"
 
