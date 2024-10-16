@@ -167,9 +167,10 @@ drop_table_burn() {
 }
 
 get_extent(){
+    # To dynamic approach we may read from each biome border table
     TARGET="${1}"
     TB=$(get_border_table_name "${TARGET}")
-
+    
     SQL="WITH target AS"
     SQL="${SQL}( SELECT ST_Extent(geom) as bbox FROM public.${TB} )"
     SQL="${SQL}SELECT ST_XMin(bbox) ||','|| ST_YMin(bbox) ||','|| ST_XMax(bbox) ||','|| ST_YMax(bbox) FROM target"
@@ -185,9 +186,11 @@ get_extent(){
 generate_raster(){
     TB_NAME="${1}"
     BBOX=${2}
-    PGCONNECTION="${3}"
-    OUTPUT="${4}"
-    gdal_rasterize -tr 0.000268900 -0.000268900 \
+    PIXEL_SIZE=${3}
+    PGCONNECTION="${4}"
+    OUTPUT="${5}"
+    
+    gdal_rasterize -tr ${PIXEL_SIZE} \
     -te ${BBOX} \
     -a_nodata 255 -co "COMPRESS=LZW" \
     -ot Byte PG:"${PGCONNECTION}" \
@@ -205,6 +208,32 @@ generate_final_raster(){
     gdalbuildvrt "${OUTPUT_FILE}.vrt" ${INPUT_FILES}
 
     gdal_translate -of GTiff -co "COMPRESS=LZW" -co BIGTIFF=YES "${OUTPUT_FILE}.vrt" "${OUTPUT_FILE}.tif"
+
+    cd -
+}
+
+cut_final_raster_by_biome(){
+    INPUT_FILE="${1}"
+    OUTPUT_FILE="${2}"
+    DATA_DIR="${3}"
+    PIXEL_SIZE=${4}
+    PGCONNECTION="${5}"
+    TARGET="${6}"
+    TB=$(get_border_table_name "${TARGET}")
+    
+    SQL="SELECT geom FROM public.${TB}"
+
+    cd ${DATA_DIR}
+
+    gdalwarp -cutline PG:"${PGCONNECTION}" -csql "${SQL}" \
+    -multi -overwrite \
+    -tr ${PIXEL_SIZE} \
+    -co "COMPRESS=LZW" -co BIGTIFF=YES \
+    -ot Byte -of GTiff "${INPUT_FILE}.tif" "${OUTPUT_FILE}.tif"
+
+    # If we use this option to crop the output raster by biome, we will have pixel shift.
+    # but without the option, the output raster by biome will have the BBOX Brasil
+    # -crop_to_cutline
 
     cd -
 }

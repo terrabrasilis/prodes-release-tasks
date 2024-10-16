@@ -2,6 +2,12 @@
 #
 # the path of the binaries in the container where the CLI programs are installed.
 PATH_BIN="/usr/bin"
+
+# GDAL settings
+export CHECK_DISK_FREE_SPACE=NO
+export GDAL_CACHEMAX=60%
+export GDAL_NUM_THREADS=ALL_CPUS
+
 #
 # load database server configurations
 . ./dbconf.sh
@@ -54,8 +60,8 @@ do
     # add database name into PSQL pg connect string
     PG_CON="-d ${DB_NAME} ${PG_CON_SH}"
 
-    # get bbox for the target data
-    BBOX=$(get_extent "${TARGET_NAME}")
+    # get bbox for the target data (only if we want use one BBOX for each biome)
+    # BBOX=$(get_extent "${TARGET_NAME}")
 
     # ------------------------------------------------ #
     # GENERATE ONE RASTER TO EACH TABLE AS INPUT FILES
@@ -77,7 +83,7 @@ do
 
         # test if table exists
         TABLE_EXISTS=$(table_exists "${TB_NAME}")
-        if [[ "${TABLE_EXISTS}" = "${TB_NAME}" ]];
+        if [[ ! "${TB_NAME}" = "" && "${TABLE_EXISTS}" = "${TB_NAME}" ]];
         then
 
             # define where clause if is cloud
@@ -96,7 +102,7 @@ do
             generate_palette_entries "${TB_NAME}" "${OUTPUT_DIR}" "${PGCONNECTION}"
 
             # rasterize vector table 
-            generate_raster "${TB_NAME}" "${BBOX}" "${PGCONNECTION}" "${OUTPUT_DIR}/${OUTPUT_FILE}"
+            generate_raster "${TB_NAME}" "${BBOX}" "${PIXEL_SIZE}" "${PGCONNECTION}" "${OUTPUT_DIR}/${OUTPUT_FILE}"
 
             # store the table name to clean the database at the end
             TBS_NAME+=("${TB_NAME}")
@@ -118,7 +124,7 @@ do
     generate_final_raster "${INPUT_FILES}" "${OUTPUT_FILE}" "${OUTPUT_DIR}"
 
     # store file name of final raster, used to make mosaic
-    if [[ "${RASTERS_MOSAIC}" = "yes" && -f "${OUTPUT_DIR}/${OUTPUT_FILE}.tif" ]];
+    if [[ "${RASTERS_MOSAIC}" = "yes" && -f "${OUTPUT_DIR}/${OUTPUT_FILE}.tif" && ! "${TARGET_NAME}" = "amazonia_legal" ]];
     then
         INPUT_FILES_MOSAIC+=("${OUTPUT_DIR}/${OUTPUT_FILE}.tif")
     fi;
@@ -179,7 +185,26 @@ then
     # generate the style as SLD file
     SLD_FRACTIONS=("${OUTPUT_FILE}.sldf")
     generate_sld_file "${SLD_FRACTIONS}" "${OUTPUT_FILE}" "${OUTPUT_DIR}"
+
+#    # Brasil raster cut by each biome border
+#    for TARGET_NAME in ${PRODES_DBS[@]}
+#    do
+#        # The database name based in biome name
+#        DB_NAME="prodes_${TARGET_NAME}_nb_p${BASE_YEAR}"
+#
+#        if [[ "${TARGET_NAME}" = "amazonia_legal" ]]; then
+#            DB_NAME="prodes_amazonia_nb_p${BASE_YEAR}"
+#        fi;
+#        # add database name into GDAL pg connect string
+#        PGCONNECTION="dbname='${DB_NAME}' ${PG_CON_GDAL}"
+#
+#        # cut of biome
+#        cut_final_raster_by_biome "${OUTPUT_FILE}" "${DB_NAME}" "${OUTPUT_DIR}" "${PIXEL_SIZE}" "${PGCONNECTION}" "${TARGET_NAME}"
+#
+#    done
+
 fi;
+
 
 # remove the temporary files to clean the output dirs
 DB_NAMES=$(echo ${DB_NAMES[@]})

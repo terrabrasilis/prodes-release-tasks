@@ -2,6 +2,14 @@
 
 Used to export tables with geographic vector data to raster file.
 
+The output products are:
+
+    - One GeoTiff and style file for each biome;
+    - One GeoTiff and style file for Legal Amazon;
+    - One GeoTiff and style file for Brasil;
+    - Three GeoTiffs for Brasil to use as input in the Fires Dashboard;
+ > See the "Export Settings" section to control what you want as outputs.
+
 No ports are exposed, runs only autonomous job on container starts.
 
 ## Configuration
@@ -38,13 +46,27 @@ The export expects some parameter definitions. These parameters are defined in t
 ```sh
 # Used as a database name suffix. Consider that the default database name is prodes_<biome>_nb_p<BASE_YEAR>
 BASE_YEAR="2023"
-#
+
 # Set the output directory (is mapped inside the container after run)
 BASE_PATH_DATA="/main/storage/exported/files"
 
 # list of biomes to export data
 # PRODES_DBS=("pampa" "caatinga" "pantanal" "mata_atlantica" "cerrado" "amazonia" "amazonia_legal")
-PRODES_DBS=("pantanal")
+PRODES_DBS=("pampa" "caatinga" "pantanal" "mata_atlantica" "cerrado" "amazonia" "amazonia_legal")
+
+#
+# join all rasters into a single file. If disable, the fires dashboard rasters do not generated.
+RASTERS_MOSAIC="yes"
+
+#
+# remove temporary files and tables?
+REMOVE_TMP_FILES="yes"
+
+#
+# default values for BBOX and Pixel size.
+# force the same BBOX Brazil for all biomes
+BBOX="-73.98318215899995 -33.75117799399993 -28.847770352999916 5.269580833000035"
+PIXEL_SIZE="0.000268900 -0.000268900"
 ```
 
 If you need to change these values, edit the "export_tables_to_file_config.sh" file inside the "pg-to-raster-file/" directory on repository root.
