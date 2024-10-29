@@ -183,6 +183,18 @@ get_extent(){
     echo "${XMIN} ${YMIN} ${XMAX} ${YMAX}"
 }
 
+adjust_extent(){
+    # bbox
+    BBOX="${1}"
+    #PIXEL_SIZE="${2}"
+
+    # Used to read inside python script
+    export BBOX="${BBOX}"
+    #export PIXEL_SIZE="${PIXEL_SIZE}"
+
+    echo $(python3 adjust_extent.py)
+}
+
 generate_raster(){
     TB_NAME="${1}"
     BBOX=${2}
@@ -190,8 +202,12 @@ generate_raster(){
     PGCONNECTION="${4}"
     OUTPUT="${5}"
     
+    # -tap (target aligned pixels) Align the coordinates of the extent of the output file to the values of the -tr, 
+    # such that the aligned extent includes the minimum extent.
+    # Alignment means that xmin / resx, ymin / resy, xmax / resx and ymax / resy are integer values.
+    #  
     gdal_rasterize -tr ${PIXEL_SIZE} \
-    -te ${BBOX} \
+    -te ${BBOX} -tap \
     -a_nodata 255 -co "COMPRESS=LZW" \
     -ot Byte PG:"${PGCONNECTION}" \
     -a "class_number" \
@@ -251,7 +267,7 @@ generate_fires_dashboard_products(){
 
     if [[ "p1" = "${PRODUCT}" ]]; then
         # generate a map only with forest + no-forest + hidrography
-        CALC="((A==101)*101 + (A==91)*91 + (A==100)*100 + 100*logical_and(A>=0,A<=90))"
+        CALC="((A==101)*101 + (A==91)*91 + (A==99)*100 + (A==100)*100 + 100*logical_and(A>=0,A<=90))"
     elif [[ "p2" = "${PRODUCT}" ]]; then
         # generate a map only with consolidate deforestation from more than 3 years ago
         CALC="(10*logical_and(A>=0,A<=${PV}) + 10*logical_and(A>=50,A<=90))"
