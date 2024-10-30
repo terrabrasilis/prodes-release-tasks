@@ -157,12 +157,15 @@ create_table_to_burn(){
     ${PATH_BIN}/psql ${PG_CON} -t -c "${SQL};"
 }
 
-drop_table_burn() {
-    if [[ "${REMOVE_TMP_FILES}" = "yes" ]];
+drop_temporary_table() {
+    if [[ "${REMOVE_TEMPORARY_ARTIFACTS}" = "yes" ]];
     then
-        TB="${1}"
-        SQL="DROP TABLE IF EXISTS public.burn_${TB}"
-        ${PATH_BIN}/psql ${PG_CON} -t -c "${SQL};"
+        TBS_NAME="${1}"
+        for TB in ${TBS_NAME[@]}
+        do
+            SQL="DROP TABLE IF EXISTS public.burn_${TB}"
+            ${PATH_BIN}/psql ${PG_CON} -t -c "${SQL};"
+        done;
     fi;
 }
 
@@ -224,32 +227,6 @@ generate_final_raster(){
     gdalbuildvrt "${OUTPUT_FILE}.vrt" ${INPUT_FILES}
 
     gdal_translate -of GTiff -co "COMPRESS=LZW" -co BIGTIFF=YES "${OUTPUT_FILE}.vrt" "${OUTPUT_FILE}.tif"
-
-    cd -
-}
-
-cut_final_raster_by_biome(){
-    INPUT_FILE="${1}"
-    OUTPUT_FILE="${2}"
-    DATA_DIR="${3}"
-    PIXEL_SIZE=${4}
-    PGCONNECTION="${5}"
-    TARGET="${6}"
-    TB=$(get_border_table_name "${TARGET}")
-    
-    SQL="SELECT geom FROM public.${TB}"
-
-    cd ${DATA_DIR}
-
-    gdalwarp -cutline PG:"${PGCONNECTION}" -csql "${SQL}" \
-    -multi -overwrite \
-    -tr ${PIXEL_SIZE} \
-    -co "COMPRESS=LZW" -co BIGTIFF=YES \
-    -ot Byte -of GTiff "${INPUT_FILE}.tif" "${OUTPUT_FILE}.tif"
-
-    # If we use this option to crop the output raster by biome, we will have pixel shift.
-    # but without the option, the output raster by biome will have the BBOX Brasil
-    # -crop_to_cutline
 
     cd -
 }
@@ -324,7 +301,7 @@ generate_final_zip_file(){
     FILE_NAME="${1}"
     DATA_DIR="${2}"
 
-    zip -j ${DATA_DIR}/${FILE_NAME}.zip ${DATA_DIR}/${FILE_NAME}.*
+    zip -j ${DATA_DIR}/${FILE_NAME}.zip ${DATA_DIR}/${FILE_NAME}.{tif,txt,sld,qml}
 }
 
 add_qml_start(){
@@ -448,14 +425,21 @@ generate_sld_file(){
 }
 
 remove_temporary_files(){
-    DB_NAMES="${1}"
+    ITEMS="${1}"
     BASE_DIR="${2}"
+    # if the ITEMS is a list of dirs or of files
+    DIR_OR_FILE="${3}"
 
-    if [[ "${REMOVE_TMP_FILES}" = "yes" ]];
+    if [[ "${REMOVE_TEMPORARY_ARTIFACTS}" = "yes" ]];
     then
-        for DBNAME in ${DB_NAMES[@]}
+        for ITEM in ${ITEMS[@]}
         do
-            rm ${BASE_DIR}/${DBNAME}/*.{sfl,sldf,vrt}
+            if [[ "${DIR_OR_FILE}" = "dir" ]];
+            then
+                rm ${BASE_DIR}/${ITEM}/*.{sfl,sldf,vrt} 2>/dev/null
+            else
+                rm ${BASE_DIR}/${ITEM}*.tif 2>/dev/null
+            fi;
         done;
     fi;
 }

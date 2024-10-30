@@ -19,7 +19,7 @@ export GDAL_NUM_THREADS=ALL_CPUS
 . ./functions_lib.sh
 
 # if raster mosaic is enabled, it needs temporary files, so disable tmp files removal.
-if [[ "${RASTERS_MOSAIC}" = "yes" ]];
+if [[ "${BUILD_BR_MOSAIC}" = "yes" ]];
 then
     # used to store one raster for each database
     INPUT_FILES_MOSAIC=()
@@ -28,48 +28,48 @@ fi;
 # to store dbnames used to clean temporary files in the end
 DB_NAMES=()
 
-if [[ "${REBUILD_ONLY_MOSAIC}" = "no" ]];
-then
+# loop to export all tables of each database for an schema define into pgconfig file
+for TARGET_NAME in ${PRODES_DBS[@]}
+do
+    # The database name based in biome name
+    DB_NAME="prodes_${TARGET_NAME}_nb_p${BASE_YEAR}"
 
-    # loop to export all tables of each database for an schema define into pgconfig file
-    for TARGET_NAME in ${PRODES_DBS[@]}
-    do
-        # The database name based in biome name
-        DB_NAME="prodes_${TARGET_NAME}_nb_p${BASE_YEAR}"
+    if [[ "${TARGET_NAME}" = "amazonia_legal" ]]; then
+        DB_NAME="prodes_amazonia_nb_p${BASE_YEAR}"
+    fi;
 
-        if [[ "${TARGET_NAME}" = "amazonia_legal" ]]; then
-            DB_NAME="prodes_amazonia_nb_p${BASE_YEAR}"
-        fi;
+    # Logging which database will be processed now.
+    echo ""
+    echo "Processing the database: ${DB_NAME}"
+    echo "----------------------------------------------"
 
-        # Logging which database will be processed now.
-        echo ""
-        echo "Processing the database: ${DB_NAME}"
-        echo "----------------------------------------------"
+    # used in the end
+    DB_NAMES+=("${DB_NAME}")
 
-        # used in the end
-        DB_NAMES+=("${DB_NAME}")
+    # Set a default local directory if not set
+    if [[ "" = "${BASE_PATH_DATA}" ]]; then
+        BASE_PATH_DATA=`pwd`
+    fi;
+    # The output directory for each database
+    OUTPUT_DIR="${BASE_PATH_DATA}/${DB_NAME}"
+    # creating output directory to put files
+    mkdir -p "${OUTPUT_DIR}"
 
-        # Set a default local directory if not set
-        if [[ "" = "${BASE_PATH_DATA}" ]]; then
-            BASE_PATH_DATA=`pwd`
-        fi;
-        # The output directory for each database
-        OUTPUT_DIR="${BASE_PATH_DATA}/${DB_NAME}"
-        # creating output directory to put files
-        mkdir -p "${OUTPUT_DIR}"
+    # add database name into GDAL pg connect string
+    PGCONNECTION="dbname='${DB_NAME}' ${PG_CON_GDAL}"
+    # add database name into PSQL pg connect string
+    PG_CON="-d ${DB_NAME} ${PG_CON_SH}"
 
-        # add database name into GDAL pg connect string
-        PGCONNECTION="dbname='${DB_NAME}' ${PG_CON_GDAL}"
-        # add database name into PSQL pg connect string
-        PG_CON="-d ${DB_NAME} ${PG_CON_SH}"
-
+    # ------------------------------------------------ #
+    # GENERATE ONE RASTER TO EACH TABLE AS INPUT FILES
+    # ------------------------------------------------ #
+    if [[ "${REBUILD_ONLY_BR_MOSAIC}" = "no" ]];
+    then
         # get bbox for the target data (only if we want use one BBOX for each biome)
-        BBOX_BIOME=$(get_extent "${TARGET_NAME}")
-        BBOX=$(adjust_extent "${BBOX_BIOME}") # "${PIXEL_SIZE}")
+        BBOX=$(get_extent "${TARGET_NAME}")
+        #BBOX_BIOME=$(get_extent "${TARGET_NAME}")
+        #BBOX=$(adjust_extent "${BBOX_BIOME}")
 
-        # ------------------------------------------------ #
-        # GENERATE ONE RASTER TO EACH TABLE AS INPUT FILES
-        # ------------------------------------------------ #
         INPUT_FILES=()
         TBS_NAME=()
         # define tables of type data to insert into raster file
@@ -119,19 +119,17 @@ then
             else
                 echo "Table do not exists: ${TB_NAME}"
             fi;
-        done
+        done # end build raster for each table
 
+        # ------------------------------------------------ #
+        # GENERATE ONE RASTER TO BIOME
+        # ------------------------------------------------ #
+        # build the biome raster using each table raster
         INPUT_FILES=$(echo ${INPUT_FILES[@]})
         OUTPUT_FILE="prodes_${TARGET_NAME}_${BASE_YEAR}"
 
         # generate the final file with all intermediary files
         generate_final_raster "${INPUT_FILES}" "${OUTPUT_FILE}" "${OUTPUT_DIR}"
-
-        # store file name of final raster, used to make mosaic
-        if [[ "${RASTERS_MOSAIC}" = "yes" && -f "${OUTPUT_DIR}/${OUTPUT_FILE}.tif" && ! "${TARGET_NAME}" = "amazonia_legal" ]];
-        then
-            INPUT_FILES_MOSAIC+=("${OUTPUT_DIR}/${OUTPUT_FILE}.tif")
-        fi;
 
         # join all style fractions, sfl and sldf into one style file for each style format
         generate_main_palette_entries "${OUTPUT_FILE}" "${OUTPUT_DIR}"
@@ -151,34 +149,45 @@ then
         generate_final_zip_file "${OUTPUT_FILE}" "${OUTPUT_DIR}"
 
         # drop the temporary tables
-        for TB in ${TBS_NAME[@]}
-        do
-            drop_table_burn "${TB}"
-        done
+        TBS_NAME=$(echo ${TBS_NAME[@]})
+        drop_temporary_table "${TBS_NAME}"
+        # remove temporary files
+        remove_temporary_files "${INPUT_FILES}" "${OUTPUT_DIR}" "file"
+    else
+        # if skip build of each biome mosaic we need the output file to build BR mosaic
+        OUTPUT_FILE="prodes_${TARGET_NAME}_${BASE_YEAR}"
+    fi;
 
-    # end of biome list
-    done
-fi; # end the REBUILD_ONLY_MOSAIC
+    # store file name of each biome raster, used to make BR mosaic
+    if [[ "${BUILD_BR_MOSAIC}" = "yes" && -f "${OUTPUT_DIR}/${OUTPUT_FILE}.tif" && ! "${TARGET_NAME}" = "amazonia_legal" ]];
+    then
+        INPUT_FILES_MOSAIC+=("${OUTPUT_DIR}/${OUTPUT_FILE}.tif")
+    fi;
 
-# if the mosaic raster is enable, join all rasters into one
-if [[ "${RASTERS_MOSAIC}" = "yes" ]];
+done # end of biome list
+
+# if the Brasil raster mosaic is enable, join all rasters into one
+if [[ "${BUILD_BR_MOSAIC}" = "yes" ]];
 then
     INPUT_FILES_MOSAIC=$(echo ${INPUT_FILES_MOSAIC[@]})
     OUTPUT_FILE="prodes_brasil_${BASE_YEAR}"
-    # The output directory for mosaic
+    # The output directory for BR mosaic
     OUTPUT_DIR="${BASE_PATH_DATA}"
     
     # generate the final file with all intermediate files
     generate_final_raster "${INPUT_FILES_MOSAIC}" "${OUTPUT_FILE}" "${OUTPUT_DIR}"
 
-    # generate a base map from prodes with forest+non-forest+hydrography to use in the fires dashboard
-    generate_fires_dashboard_products "${OUTPUT_FILE}" "${OUTPUT_DIR}" "${BASE_YEAR}" "p1"
+    if [[ "${BUILD_FIRES_DASHBOARD_PRODUCTS}" = "yes" ]];
+    then
+        # generate a base map from prodes with forest + non-forest + hydrography to use in the fires dashboard
+        generate_fires_dashboard_products "${OUTPUT_FILE}" "${OUTPUT_DIR}" "${BASE_YEAR}" "p1"
 
-    # generate a map from deforestation data from more than 3 years ago to use on the fires dashboard
-    generate_fires_dashboard_products "${OUTPUT_FILE}" "${OUTPUT_DIR}" "${BASE_YEAR}" "p2"
+        # generate a map from deforestation data from more than 3 years ago to use on the fires dashboard
+        generate_fires_dashboard_products "${OUTPUT_FILE}" "${OUTPUT_DIR}" "${BASE_YEAR}" "p2"
 
-    # generate a map only with recent deforestation less than 3 years old
-    generate_fires_dashboard_products "${OUTPUT_FILE}" "${OUTPUT_DIR}" "${BASE_YEAR}" "p3"
+        # generate a map only with recent deforestation less than 3 years old
+        generate_fires_dashboard_products "${OUTPUT_FILE}" "${OUTPUT_DIR}" "${BASE_YEAR}" "p3"
+    fi;
 
     # join all style fractions into one style file for each style format, QML and SLD
     generate_main_palette_entries "${OUTPUT_FILE}" "${OUTPUT_DIR}"
@@ -191,26 +200,9 @@ then
     SLD_FRACTIONS=("${OUTPUT_FILE}.sldf")
     generate_sld_file "${SLD_FRACTIONS}" "${OUTPUT_FILE}" "${OUTPUT_DIR}"
 
-    # Brasil raster cut by each biome border
-#    for TARGET_NAME in ${PRODES_DBS[@]}
-#    do
-#        # The database name based in biome name
-#        DB_NAME="prodes_${TARGET_NAME}_nb_p${BASE_YEAR}"
-#
-#        if [[ "${TARGET_NAME}" = "amazonia_legal" ]]; then
-#            DB_NAME="prodes_amazonia_nb_p${BASE_YEAR}"
-#        fi;
-#        # add database name into GDAL pg connect string
-#        PGCONNECTION="dbname='${DB_NAME}' ${PG_CON_GDAL}"
-#
-#        # cut of biome
-#        cut_final_raster_by_biome "${OUTPUT_FILE}" "${DB_NAME}" "${OUTPUT_DIR}" "${PIXEL_SIZE}" "${PGCONNECTION}" "${TARGET_NAME}"
-#
-#    done
-
 fi;
 
 
 # remove the temporary files to clean the output dirs
 DB_NAMES=$(echo ${DB_NAMES[@]})
-remove_temporary_files "${DB_NAMES}" "${BASE_PATH_DATA}"
+remove_temporary_files "${DB_NAMES}" "${BASE_PATH_DATA}" "dir"
