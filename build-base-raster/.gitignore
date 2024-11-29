@@ -1,0 +1,13 @@
+**/pgconfig*
+**/*.log
+**/*.tif
+**/*.qml
+**/*.vrt
+**/*.txt
+**/*.sfl
+**/*.sld
+**/*.sldf
+**/*.zip
+**/*.gpkg
+**/*.xml
+**/*.qgz
