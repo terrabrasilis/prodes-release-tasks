@@ -179,21 +179,19 @@ get_extent(){
     SQL="${SQL}SELECT ST_XMin(bbox) ||','|| ST_YMin(bbox) ||','|| ST_XMax(bbox) ||','|| ST_YMax(bbox) FROM target"
     BBOX=($(${PATH_BIN}/psql ${PG_CON} -t -c "${SQL};"))
     
-    XMIN=$(echo "${BBOX}" | cut -d',' -f1)
-    YMIN=$(echo "${BBOX}" | cut -d',' -f2)
-    XMAX=$(echo "${BBOX}" | cut -d',' -f3)
-    YMAX=$(echo "${BBOX}" | cut -d',' -f4)
-    echo "${XMIN} ${YMIN} ${XMAX} ${YMAX}"
+    echo "${BBOX}"
+    #XMIN=$(echo "${BBOX}" | cut -d',' -f1)
+    #YMIN=$(echo "${BBOX}" | cut -d',' -f2)
+    #XMAX=$(echo "${BBOX}" | cut -d',' -f3)
+    #YMAX=$(echo "${BBOX}" | cut -d',' -f4)
+    #echo "${XMIN} ${YMIN} ${XMAX} ${YMAX}"
 }
 
 adjust_extent(){
     # bbox
     BBOX="${1}"
-    #PIXEL_SIZE="${2}"
-
     # Used to read inside python script
     export BBOX="${BBOX}"
-    #export PIXEL_SIZE="${PIXEL_SIZE}"
 
     echo $(python3 adjust_extent.py)
 }
@@ -210,7 +208,7 @@ generate_raster(){
     # Alignment means that xmin / resx, ymin / resy, xmax / resx and ymax / resy are integer values.
     #  
     gdal_rasterize -tr ${PIXEL_SIZE} \
-    -te ${BBOX} -tap \
+    -te ${BBOX} \
     -a_nodata 255 -co "COMPRESS=LZW" \
     -ot Byte PG:"${PGCONNECTION}" \
     -a "class_number" \

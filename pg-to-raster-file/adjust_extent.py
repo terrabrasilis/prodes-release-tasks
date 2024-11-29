@@ -1,89 +1,72 @@
-import os
+from osgeo import gdal
+import os, sys
 
-def adjust_xmax(xmax, xmin, pixel_size, keep_exact_cols=False):
-    # distance between max and min in X
-    XDIST=xmax - xmin
-    # if distance is negative value, change to positive
-    XDIST=XDIST*-1 if XDIST<0 else XDIST
-    # calculate the number of columns using the pixel size
-    COLS=int(XDIST / pixel_size) + 1 if not keep_exact_cols else int(XDIST / pixel_size)
-    # calculate the XMAX based on number of columns to match with raster grid.
-    XMAX=xmin + COLS * pixel_size
-    return XMAX
+def aline_bbox(bbox:str, data_dir:str=None)->str:
+    """
+    Used to align any input extent coordinates to the Brazil reference grid.
+    We expect that input bbox is inside the reference grid bbox.
 
-def adjust_xmin(xmin_br, xmin, pixel_size):
-    XDIST=xmin - xmin_br
-    XDIST=XDIST*-1 if XDIST<0 else XDIST
-    COLS=int(XDIST / pixel_size) - 1
-    XMIN=xmin_br + COLS * pixel_size
-    return XMIN
+    parameters:
+        bbox, the input bbox, as string, to adjust. The separator character is a comma. (e.g. xmin,ymin,xmax,ymax)*;
+        data_dir, the location of reference grid file;
 
-def adjust_ymax(ymax_br, ymax, pixel_size):
-    
-    YDIST=ymax_br - ymax
-    # if distance is negative value, change to positive
-    YDIST=YDIST*-1 if YDIST<0 else YDIST
-    # calculate the number of rows using the pixel size
-    ROWS=int(YDIST / pixel_size) - 1
-    # calculate the YMAX based on number of columns to match with raster grid.
-    YMAX=ymax_br - ROWS * pixel_size
-    return YMAX
+    The output is the adjusted input bbox compatible with the expected bbox from the -te parameter to the gdal_rasterize program (gdal_rasterize -te ${BBOX} ).
+    The separator character is a space (e.g. xmin ymin xmax ymax)*
 
-def adjust_ymin(ymax, ymin, pixel_size, keep_exact_rows=False):
-    # distance between max and min in Y
-    YDIST=ymax - ymin
-    # if distance is negative value, change to positive
-    YDIST=YDIST*-1 if YDIST<0 else YDIST
-    # calculate the number of rows using the pixel size
-    ROWS=int(YDIST / pixel_size) + 1 if not keep_exact_rows else int(YDIST / pixel_size)
-    # calculate the YMIN based on number of columns to match with raster grid.
-    YMIN=ymax - ROWS * pixel_size
-    return YMIN
+    *Each coordinate value must be a floating point number in degree units compatible with the Geographic/SIRGAS2000 projection, EPSG:4674.
+    """
+    # location of this file, used as default data dir
+    script_dir=os.path.realpath(os.path.dirname(__file__))
+    # use the location of this script file as default when DATA_DIR is not provided
+    data_dir=data_dir if data_dir is not None else os.getenv("DATA_DIR", script_dir)
 
-BBOX=os.getenv("BBOX", None)
-BBOX_BR=os.getenv("BBOX_BR", "-73.98318215899995 -33.751035966999964 -28.847779358999958 5.269580833000035")
-PIXEL_SIZE=os.getenv("PIXEL_SIZE", "0.0002689")
+    # input geotiff as reference grid
+    filename = "{0}/grid_brasil_no_data.tif".format(data_dir)
+    bbox=bbox.split(',')
 
-if BBOX is None:
-    # BBOX BIOME (pampa)
-    BBOX="-57.64957541999996 -33.75117799399993 -50.05266419299994 -27.46155951099996"
+    XMIN=float(bbox[0])
+    YMIN=float(bbox[1])
+    XMAX=float(bbox[2])
+    YMAX=float(bbox[3])
 
-BBOX=BBOX.split(" ")
-BBOX_BR=BBOX_BR.split(" ")
-PIXEL_SIZE=float(PIXEL_SIZE)
+    if not os.path.isfile(filename):
+        print("Input file is missing", file=sys.stderr)
+        print(f"{filename}", file=sys.stderr)
+        return None
+    else:
+        dataset = gdal.Open(filename, gdal.GA_ReadOnly)
+        transform = dataset.GetGeoTransform()
 
-"""
-The reference coordinates
-"""
-# upper left
-XMIN_BR=float(BBOX_BR[0])
-YMAX_BR=float(BBOX_BR[3])
+        xOrigin = transform[0]
+        yOrigin = transform[3]
+        pixelWidth = transform[1]
+        pixelHeight = -transform[5]
 
-# we use it to adjust the BBOX of BR
-## # lower right
-## YMIN_BR=float(BBOX_BR[1])
-## XMAX_BR=float(BBOX_BR[2])
-## # only once to adjust the BBOX of BR
-## XMAX_BR=adjust_xmax(xmax=XMAX_BR, xmin=XMIN_BR, pixel_size=PIXEL_SIZE, keep_exact_cols=True)
-## YMIN_BR=adjust_ymin(ymax=YMAX_BR, ymin=YMIN_BR, pixel_size=PIXEL_SIZE, keep_exact_rows=True)
-## print(f"{XMIN_BR} {YMIN_BR} {XMAX_BR} {YMAX_BR}")
+        def adjust_x(x_value, xOrigin, pixelWidth):
+            lon = float(x_value)
+            col = int((lon - xOrigin) / pixelWidth)
+            return xOrigin + pixelWidth * col
 
-"""
-Adjust input coordinates
-"""
-# upper left
-XMIN=float(BBOX[0])
-YMAX=float(BBOX[3])
-# coord to adjust
-YMIN=float(BBOX[1])
-XMAX=float(BBOX[2])
+        
+        def adjust_y(y_value, yOrigin, pixelHeight):
+            lat = float(y_value)
+            row = int((yOrigin - lat ) / pixelHeight)
+            return yOrigin - pixelHeight * row
 
-# first we must adjust the upper left based into reference upper left coordinate
-XMIN=adjust_xmin(xmin_br=XMIN_BR, xmin=XMIN, pixel_size=PIXEL_SIZE)
-YMAX=adjust_ymax(ymax_br=YMAX_BR, ymax=YMAX, pixel_size=PIXEL_SIZE)
+        upper_left_xmin=adjust_x(x_value=XMIN, xOrigin=xOrigin, pixelWidth=pixelWidth)
+        upper_left_ymax=adjust_y(y_value=YMAX, yOrigin=yOrigin, pixelHeight=pixelHeight)
+        lower_right_xmax=adjust_x(x_value=XMAX, xOrigin=xOrigin, pixelWidth=pixelWidth)
+        lower_right_ymin=adjust_y(y_value=YMIN, yOrigin=yOrigin, pixelHeight=pixelHeight)
 
-# and then we must adjust the lower right reference coordinate
-XMAX=adjust_xmax(xmax=XMAX, xmin=XMIN, pixel_size=PIXEL_SIZE)
-YMIN=adjust_ymin(ymax=YMAX, ymin=YMIN, pixel_size=PIXEL_SIZE)
+        dataset = None
 
-print(f"{XMIN} {YMIN} {XMAX} {YMAX}")
+        return f"{upper_left_xmin} {lower_right_ymin} {lower_right_xmax} {upper_left_ymax}"
+
+
+# get BBOX from environment variable as input to adjust
+bbox=os.getenv("BBOX", None)
+bbox=aline_bbox(bbox=bbox, data_dir="/main/storage/exported/files")
+if bbox is not None:
+    print(bbox)
+else:
+    SystemExit().code=1

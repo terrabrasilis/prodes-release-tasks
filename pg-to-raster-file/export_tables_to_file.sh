@@ -5,7 +5,7 @@ PATH_BIN="/usr/bin"
 
 # GDAL settings
 export CHECK_DISK_FREE_SPACE=NO
-export GDAL_CACHEMAX=30%
+export GDAL_CACHEMAX=10%
 export GDAL_NUM_THREADS=ALL_CPUS
 
 #
@@ -66,19 +66,28 @@ do
     if [[ "${REBUILD_ONLY_BR_MOSAIC}" = "no" ]];
     then
         # get bbox for the target data (only if we want use one BBOX for each biome)
-        BBOX=$(get_extent "${TARGET_NAME}")
-        #BBOX_BIOME=$(get_extent "${TARGET_NAME}")
-        #BBOX=$(adjust_extent "${BBOX_BIOME}")
+        if [[ ! -v BBOX_FROM_CONFIG ]];
+        then
+            echo "get extent from vector data to use as BBOX"
+            BBOX_BIOME=$(get_extent "${TARGET_NAME}")
+            echo "${TARGET_NAME} BBOX_BIOME=${BBOX_BIOME}"
+            BBOX_FINAL=$(adjust_extent "${BBOX_BIOME}")
+            echo "${TARGET_NAME} BBOX_FINAL=${BBOX_FINAL}"
+        else
+            echo "using BBOX from config file"
+            BBOX_FINAL=${BBOX_FROM_CONFIG}
+        fi;
 
         INPUT_FILES=()
         TBS_NAME=()
         # define tables of type data to insert into raster file
-        TABLES=("border" "no_forest" "hydrography" "accumulated" "yearly" "residual" "cloud")
-        # for amazonia we must include data for no forest areas
-        if [[ "${TARGET_NAME}" = "amazonia" ]];
-        then
-            TABLES+=("hydrography_nf" "accumulated_nf" "yearly_nf" "residual_nf" "cloud_nf")
-        fi;
+        TABLES=("border")
+        #TABLES=("border" "no_forest" "hydrography" "accumulated" "yearly" "residual" "cloud")
+        ## for amazonia we must include data for no forest areas
+        #if [[ "${TARGET_NAME}" = "amazonia" ]];
+        #then
+        #    TABLES+=("hydrography_nf" "accumulated_nf" "yearly_nf" "residual_nf" "cloud_nf")
+        #fi;
 
         for TABLE in ${TABLES[@]}
         do
@@ -106,7 +115,7 @@ do
                 generate_palette_entries "${TB_NAME}" "${OUTPUT_DIR}" "${PGCONNECTION}"
 
                 # rasterize vector table 
-                generate_raster "${TB_NAME}" "${BBOX}" "${PIXEL_SIZE}" "${PGCONNECTION}" "${OUTPUT_DIR}/${OUTPUT_FILE}"
+                generate_raster "${TB_NAME}" "${BBOX_FINAL}" "${PIXEL_SIZE}" "${PGCONNECTION}" "${OUTPUT_DIR}/${OUTPUT_FILE}"
 
                 # store the table name to clean the database at the end
                 TBS_NAME+=("${TB_NAME}")
@@ -143,10 +152,10 @@ do
         generate_sld_file "${SLD_FRACTIONS}" "${OUTPUT_FILE}" "${OUTPUT_DIR}"
 
         # generate the report file
-        generate_report_file "${OUTPUT_FILE}" "${OUTPUT_DIR}"
+        #generate_report_file "${OUTPUT_FILE}" "${OUTPUT_DIR}"
 
         # generate the ZIP file
-        generate_final_zip_file "${OUTPUT_FILE}" "${OUTPUT_DIR}"
+        #generate_final_zip_file "${OUTPUT_FILE}" "${OUTPUT_DIR}"
 
         # drop the temporary tables
         TBS_NAME=$(echo ${TBS_NAME[@]})
