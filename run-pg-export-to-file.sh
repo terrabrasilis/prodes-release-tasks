@@ -15,8 +15,6 @@ elif [[ "${1}" = "raster" ]]; then
   DIR_TYPE="pg-to-raster-file"
 elif [[ "${1}" = "json" ]]; then
   DIR_TYPE="lois-to-json-file"
-elif [[ "${1}" = "base" ]]; then
-  DIR_TYPE="build-base-raster"
 else
   echo "You need provide some type of exportation."
   echo "------------------------------------------"
