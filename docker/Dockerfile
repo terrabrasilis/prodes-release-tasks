@@ -1,4 +1,4 @@
-from osgeo/gdal:ubuntu-small-3.6.3
+FROM osgeo/gdal:ubuntu-small-3.6.3
 
 LABEL "br.inpe.dpi"="INPE/DPI-TerraBrasilis" \
 br.inpe.dpi.terrabrasilis="script-tasks" \
@@ -25,4 +25,4 @@ RUN echo "" > /etc/apt/apt.conf.d/docker-clean \
 
 WORKDIR /scripts
 
-CMD ["bash" "start.sh"]
+CMD ["bash", "start.sh"]
