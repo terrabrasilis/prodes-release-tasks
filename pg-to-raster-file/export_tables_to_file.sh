@@ -29,8 +29,15 @@ fi;
 DB_NAMES=()
 
 # loop to export all tables of each database for an schema define into pgconfig file
-for TARGET_NAME in ${PRODES_DBS[@]}
+length=${#PRODES_DBS[@]}
+for ((i=0; i<$length; ++i));
 do
+    TARGET_NAME=${PRODES_DBS[$i]}
+    BASE_YEAR=${BASE_YEARS[$i]}
+# done
+
+# for TARGET_NAME in ${PRODES_DBS[@]}
+# do
     # The database name based in biome name
     DB_NAME="prodes_${TARGET_NAME}_nb_p${BASE_YEAR}"
 
@@ -80,14 +87,14 @@ do
 
         INPUT_FILES=()
         TBS_NAME=()
-        # define tables of type data to insert into raster file
-        TABLES=("border")
-        #TABLES=("border" "no_forest" "hydrography" "accumulated" "yearly" "residual" "cloud")
-        ## for amazonia we must include data for no forest areas
-        #if [[ "${TARGET_NAME}" = "amazonia" ]];
-        #then
-        #    TABLES+=("hydrography_nf" "accumulated_nf" "yearly_nf" "residual_nf" "cloud_nf")
-        #fi;
+        # define tables of type data to insert into raster file.
+        # the tables to export data from database.
+        TABLES=("border" "no_forest" "hydrography" "accumulated" "yearly" "residual")
+        # for amazonia we must include data for no forest areas
+        if [[ "${TARGET_NAME}" = "amazonia" ]];
+        then
+            TABLES+=("hydrography_nf" "accumulated_nf" "yearly_nf" "residual_nf")
+        fi;
 
         for TABLE in ${TABLES[@]}
         do
@@ -98,15 +105,8 @@ do
             TABLE_EXISTS=$(table_exists "${TB_NAME}")
             if [[ ! "${TB_NAME}" = "" && "${TABLE_EXISTS}" = "${TB_NAME}" ]];
             then
-
-                # define where clause if is cloud
-                WHERE=""
-                if [[ "${TABLE}" = "cloud" || "${TABLE}" = "cloud_nf" ]]; then
-                    WHERE="WHERE image_date >= ( SELECT (extract(year from (MAX(image_date)::date))::text||'-01-01')::date FROM public.${TB_NAME} )"
-                fi;
-
                 # create temporary table with class as number
-                create_table_to_burn "${TB_NAME}" "${WHERE}"
+                create_table_to_burn "${TB_NAME}"
 
                 # output file name
                 OUTPUT_FILE="${TB_NAME}_${BASE_YEAR}"
@@ -152,10 +152,10 @@ do
         generate_sld_file "${SLD_FRACTIONS}" "${OUTPUT_FILE}" "${OUTPUT_DIR}"
 
         # generate the report file
-        #generate_report_file "${OUTPUT_FILE}" "${OUTPUT_DIR}"
+        generate_report_file "${OUTPUT_FILE}" "${OUTPUT_DIR}"
 
         # generate the ZIP file
-        #generate_final_zip_file "${OUTPUT_FILE}" "${OUTPUT_DIR}"
+        generate_final_zip_file "${OUTPUT_FILE}" "${OUTPUT_DIR}"
 
         # drop the temporary tables
         TBS_NAME=$(echo ${TBS_NAME[@]})
@@ -179,7 +179,7 @@ done # end of biome list
 if [[ "${BUILD_BR_MOSAIC}" = "yes" ]];
 then
     INPUT_FILES_MOSAIC=$(echo ${INPUT_FILES_MOSAIC[@]})
-    OUTPUT_FILE="prodes_brasil_${BASE_YEAR}"
+    OUTPUT_FILE="prodes_brasil_${REFERENCE_YEAR}"
     # The output directory for BR mosaic
     OUTPUT_DIR="${BASE_PATH_DATA}"
     
@@ -189,13 +189,13 @@ then
     if [[ "${BUILD_FIRES_DASHBOARD_PRODUCTS}" = "yes" ]];
     then
         # generate a base map from prodes with forest + non-forest + hydrography to use in the fires dashboard
-        generate_fires_dashboard_products "${OUTPUT_FILE}" "${OUTPUT_DIR}" "${BASE_YEAR}" "p1"
+        generate_fires_dashboard_products "${OUTPUT_FILE}" "${OUTPUT_DIR}" "${REFERENCE_YEAR}" "p1"
 
         # generate a map from deforestation data from more than 3 years ago to use on the fires dashboard
-        generate_fires_dashboard_products "${OUTPUT_FILE}" "${OUTPUT_DIR}" "${BASE_YEAR}" "p2"
+        generate_fires_dashboard_products "${OUTPUT_FILE}" "${OUTPUT_DIR}" "${REFERENCE_YEAR}" "p2"
 
         # generate a map only with recent deforestation less than 3 years old
-        generate_fires_dashboard_products "${OUTPUT_FILE}" "${OUTPUT_DIR}" "${BASE_YEAR}" "p3"
+        generate_fires_dashboard_products "${OUTPUT_FILE}" "${OUTPUT_DIR}" "${REFERENCE_YEAR}" "p3"
     fi;
 
     # join all style fractions into one style file for each style format, QML and SLD
