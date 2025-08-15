@@ -98,18 +98,18 @@ do
         DATA_QUERY="SELECT ${COLUMNS} FROM ${schema}.${TABLE}"
 
         # if cloud table or forest table, generate one shape of each class_name/year to avoid the limit of maximum size of shapefiles
-        if [[ " ${BREAK_SHP[@]} " =~ " ${TABLE} " ]]; then
-            GRP_CLASS="SELECT class_name FROM ${schema}.${TABLE} GROUP BY 1 ORDER BY 1 ASC"
-            CLS=($(${PG_BIN}/psql ${PG_CON} -t -c "${GRP_CLASS};"))
+        # if [[ " ${BREAK_SHP[@]} " =~ " ${TABLE} " ]]; then
+        #     GRP_CLASS="SELECT class_name FROM ${schema}.${TABLE} GROUP BY 1 ORDER BY 1 ASC"
+        #     CLS=($(${PG_BIN}/psql ${PG_CON} -t -c "${GRP_CLASS};"))
 
-            for CLASS_NAME in ${CLS[@]}
-            do
-                DATA_QUERY_CLS="${DATA_QUERY} WHERE class_name='${CLASS_NAME}';"
-                export_shp "${DATA_QUERY_CLS}" "${TABLE}_${CLASS_NAME}"
-            done
-        else
+        #     for CLASS_NAME in ${CLS[@]}
+        #     do
+        #         DATA_QUERY_CLS="${DATA_QUERY} WHERE class_name='${CLASS_NAME}';"
+        #         export_shp "${DATA_QUERY_CLS}" "${TABLE}_${CLASS_NAME}"
+        #     done
+        # else
             export_shp "${DATA_QUERY}" "${TABLE}"
-        fi;
+        # fi;
 
         export_gpkg "${DATA_QUERY}" "${TABLE}"
 
