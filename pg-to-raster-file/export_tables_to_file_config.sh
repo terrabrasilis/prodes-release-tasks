@@ -7,9 +7,9 @@ REFERENCE_YEAR="2024"
 BASE_PATH_DATA="/main/storage/exported/files"
 
 # list of biomes to export data and the YEAR for each bioma database
-PRODES_DBS=("pampa" "caatinga" "pantanal" "mata_atlantica" "cerrado" "amazonia" "amazonia_legal")
+PRODES_DBS=("pampa" "caatinga" "pantanal" "mata_atlantica" "cerrado" "amazonia") # "amazonia_legal")
 # Used as a database name suffix. Consider that the default database name is prodes_<biome>_nb_p<BASE_YEAR>
-BASE_YEARS=("2023" "2023" "2023" "2023" "2024" "2024" "2024")
+BASE_YEARS=("2023" "2023" "2023" "2023" "2024" "2024") # "2024")
 # PRODES_DBS=("pampa" "caatinga" "pantanal" "mata_atlantica")
 # BASE_YEARS=("2023" "2023" "2023" "2023")
 
@@ -39,5 +39,5 @@ REMOVE_TEMPORARY_ARTIFACTS="yes"
 # the adjusted bbox for cerrado, after use the adjust_extent.py
 # BBOX_FROM_CONFIG="-60.47265215899995 -24.681699166999966 -41.27754215899995 -2.3319991669999656"
 
-#PIXEL_SIZE="0.0002689 0.0002689" # 30 m
-PIXEL_SIZE="0.00009 0.00009" # 10 m
+PIXEL_SIZE="0.0002689 0.0002689" # 30 m
+#PIXEL_SIZE="0.00009 0.00009" # 10 m
