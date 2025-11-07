@@ -79,6 +79,20 @@ PIXEL_SIZE="0.00009 0.00009" # 10 m
 
 If you need to change these values, edit the "export_tables_to_file_config.sh" file inside the "pg-to-raster-file/" directory on repository root.
 
+#### About pixel size
+
+Calculating the value of pixel size.
+
+At the equator:
+---
+The conversion is approximately 30 meters/111,111 meters/degree ~approx 0.00027 degrees.
+
+At higher latitudes:
+---
+You can use the formula 30/(111111 * cos(latitude)) to find a more accurate conversion.
+
+For example, at a latitude of 45 degrees, a 30-meter pixel would be approximately 30/(111111 * cos(45°)) ~approx 0.00038 degrees. 
+
 ### Container configuration
 
 The exportation task need a directory to use as a docker volume where output data is written.
