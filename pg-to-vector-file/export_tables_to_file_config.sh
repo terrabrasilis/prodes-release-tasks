@@ -7,8 +7,8 @@ BASE_YEAR="2025"
 # FILTER=("table_name_a" "table_name_b" "table_name_c")
 # FILTER=("forest" "accumulated_deforestation_2007" "hydrography" "cloud" "no_forest" "residual" "yearly_deforestation" )
 # FILTER=("accumulated_deforestation_2007_biome" "hydrography_biome" "no_forest_biome" "residual_biome" "yearly_deforestation_biome" "yearly_deforestation_nf_biome" "yearly_deforestation_smaller_than_625ha_biome")
-FILTER=("residual_${BASE_YEAR}_pri" "residual_${BASE_YEAR}_pri_biome" "yearly_deforestation_${BASE_YEAR}_pri" "yearly_deforestation_${BASE_YEAR}_pri_biome") # "yearly_deforestation_smaller_than_625ha_${BASE_YEAR}_pri")
-#FILTER=("accumulated_deforestation_2007" "accumulated_deforestation_2007_biome" "yearly_deforestation" "yearly_deforestation_biome")
+#FILTER=("residual_${BASE_YEAR}_pri" "residual_${BASE_YEAR}_pri_biome" "yearly_deforestation_${BASE_YEAR}_pri" "yearly_deforestation_${BASE_YEAR}_pri_biome") # "yearly_deforestation_smaller_than_625ha_${BASE_YEAR}_pri")
+FILTER=("accumulated_deforestation_2000" "yearly_deforestation" "residual" "hydrography")
 #
 # Used for cloud table or forest table, generate one shape of each class_name/year to avoid the limit of maximum size of shapefiles
 # BREAK_SHP=("forest" "cloud" "forest_biome" "cloud_biome")
@@ -16,7 +16,7 @@ FILTER=("residual_${BASE_YEAR}_pri" "residual_${BASE_YEAR}_pri_biome" "yearly_de
 #
 # used to confirm the sub_class column only for the deforestation tables in the list below (valid for "amazonia" and "amazonia_legal")
 #TABLES_WITH_SUBCLASS=("yearly_deforestation" "yearly_deforestation_biome")
-TABLES_WITH_SUBCLASS=("residual_${BASE_YEAR}_pri" "residual_${BASE_YEAR}_pri_biome" "yearly_deforestation_${BASE_YEAR}_pri" "yearly_deforestation_${BASE_YEAR}_pri_biome")
+#TABLES_WITH_SUBCLASS=("residual_${BASE_YEAR}_pri" "residual_${BASE_YEAR}_pri_biome" "yearly_deforestation_${BASE_YEAR}_pri" "yearly_deforestation_${BASE_YEAR}_pri_biome")
 #
 # Set the output directory (is mapped inside the container after run)
 BASE_PATH_DATA="/main/storage/exported/files"
@@ -35,7 +35,7 @@ FID="no"
 SHP="yes"
 #
 # Export to GeoPackage
-GPKG="no"
+GPKG="yes"
 # if same file is yes, than the gpkg file name is the same of the all data from each database.
 SAME_FILE="yes"
 
@@ -45,4 +45,4 @@ TABLE_TYPE='BASE TABLE'
 #
 # list of biomes to export data
 # PRODES_DBS=("pampa" "caatinga" "pantanal" "mata_atlantica" "cerrado" "amazonia" "amazonia_legal")
-PRODES_DBS=("amazonia" "amazonia_legal")
+PRODES_DBS=("cerrado")
