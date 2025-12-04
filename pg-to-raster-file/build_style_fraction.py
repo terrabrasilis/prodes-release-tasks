@@ -37,6 +37,8 @@ class BuildQML:
         self.TB_NAME=os.getenv("TB_NAME")
         # the connection string to database
         self.PG_CONN=os.getenv("PG_CONN")
+        # the reference year used to build BR mosaic
+        self.REF_YEAR=os.getenv("REF_YEAR")
 
     def __yellow(self, how_many=1):
         """
@@ -123,7 +125,8 @@ class BuildQML:
         """
         qml_fraction=[]
         sld_fraction=[]
-        sql=f"SELECT class_number, class_name FROM public.burn_{self.TB_NAME} GROUP BY 1,2 ORDER BY 1 ASC"
+        where=f"WHERE year<={self.REF_YEAR}" if self.REF_YEAR else ""
+        sql=f"SELECT class_number, class_name FROM public.burn_{self.TB_NAME} {where} GROUP BY 1,2 ORDER BY 1 ASC"
         class_data=self.__execute_sql(sql)
         colors=self.__get_colors(len(class_data))
         c=0
@@ -156,8 +159,9 @@ class BuildQML:
         try:
             if os.path.isdir(self.DATA_DIR):
                 path_dir=f"{self.DATA_DIR}"
-                file_name_sfl=f"{self.TB_NAME}.sfl"
-                file_name_sld=f"{self.TB_NAME}.sldf"
+                file_suffix=f"_{self.REF_YEAR}" if self.REF_YEAR else ""
+                file_name_sfl=f"{self.TB_NAME}{file_suffix}.sfl"
+                file_name_sld=f"{self.TB_NAME}{file_suffix}.sldf"
                 qml_fraction, sld_fraction = self.__build_palette_fractions()
                 with open(os.path.join(path_dir,file_name_sfl), "w") as file_sfl:
                     file_sfl.write(qml_fraction)

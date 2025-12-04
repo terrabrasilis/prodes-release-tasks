@@ -107,29 +107,29 @@ get_class_number(){
     case $DATA_PATTERN in
 
         yearly | accumulated)
-            echo "substring(class_name, 4, 2)::integer as class_number, class_name"
+            echo "(RIGHT(class_name,2))::integer as class_number, class_name, (RIGHT(class_name,4))::integer as year"
             ;;
 
         residual)
-            echo "substring(class_name, 4, 2)::integer+40 as class_number, class_name"
+            echo "(RIGHT(class_name,2))::integer+40 as class_number, class_name, (RIGHT(class_name,4))::integer as year"
             ;;
 
         hydrography)
-            echo "91::integer as class_number, 'Hidrografia' as class_name"
+            echo "91::integer as class_number, 'Hidrografia' as class_name, '2000'::integer as year"
             ;;
 
         biome | amazon | brazilian)
-            echo "100::integer as class_number, 'Vegetação Nativa' as class_name"
+            echo "100::integer as class_number, 'Vegetação Nativa' as class_name, '2000'::integer as year"
             ;;
 
         no)
-            echo "101::integer as class_number, 'Não Floresta' as class_name"
+            echo "101::integer as class_number, 'Não Floresta' as class_name, '2000'::integer as year"
             ;;
         cloud)
-            echo "99::integer as class_number, 'Nuvem' as class_name"
+            echo "99::integer as class_number, 'Nuvem' as class_name, '2000'::integer as year"
             ;;
         *)
-            echo "255::integer as class_number, 'no data' as class_name"
+            echo "255::integer as class_number, 'no data' as class_name, '2000'::integer as year"
             ;;
     esac
 }
@@ -160,10 +160,11 @@ create_table_to_burn(){
 drop_temporary_table() {
     if [[ "${REMOVE_TEMPORARY_ARTIFACTS}" = "yes" ]];
     then
-        TBS_NAME="${1}"
-        for TB in ${TBS_NAME[@]}
+        TBS="${1}"
+        for TB in ${TBS[@]}
         do
             SQL="DROP TABLE IF EXISTS public.burn_${TB}"
+            echo "${SQL}"
             ${PATH_BIN}/psql ${PG_CON} -t -c "${SQL};"
         done;
     fi;
@@ -202,6 +203,12 @@ generate_raster(){
     PIXEL_SIZE=${3}
     PGCONNECTION="${4}"
     OUTPUT="${5}"
+    REF_YEAR="${6}"
+
+    WHERE=""
+    if [[ ! "" = "${REF_YEAR}" ]]; then
+        WHERE="WHERE year<=${REF_YEAR}"
+    fi;
     
     # -tap (target aligned pixels) Align the coordinates of the extent of the output file to the values of the -tr, 
     # such that the aligned extent includes the minimum extent.
@@ -212,7 +219,7 @@ generate_raster(){
     -a_nodata 255 -co "COMPRESS=LZW" \
     -ot Byte PG:"${PGCONNECTION}" \
     -a "class_number" \
-    -sql "SELECT class_number, geom FROM public.burn_${TB_NAME}" "${OUTPUT}.tif"
+    -sql "SELECT class_number, geom FROM public.burn_${TB_NAME} ${WHERE}" "${OUTPUT}.tif"
 }
 
 generate_final_raster(){
@@ -269,6 +276,10 @@ generate_palette_entries(){
     export TB_NAME="${1}"
     export DATA_DIR="${2}"
     export PG_CONN="${3}"
+    if [[ ! "" = "${4}" ]]; then
+        export REF_YEAR="${4}"
+    fi;
+    
     # used to generate and store each fraction of QML and SLD palette entries on data dir to build the final style files
     python3 build_style_fraction.py
 }
@@ -277,6 +288,10 @@ generate_main_palette_entries(){
     # Used to read inside python script
     export FILE_NAME="${1}"
     export DATA_DIR="${2}"
+    if [[ ! "" = "${3}" ]]; then
+        export REF_YEAR="${3}"
+    fi;
+
     # used to join each QML and SLD biome files into one mosaic style file
     python3 build_style.py
 }

@@ -15,6 +15,9 @@ export GDAL_NUM_THREADS=ALL_CPUS
 # apply configs based on environment and context selections
 . ./export_tables_to_file_config.sh
 
+echo "DEBUG INFO"
+echo "REFERENCE_YEAR=${REFERENCE_YEAR}"
+
 # load functions
 . ./functions_lib.sh
 
@@ -45,6 +48,9 @@ do
         DB_NAME="prodes_amazonia_nb_p${BASE_YEAR}"
     fi;
 
+    # used to identify the Marco UE databases
+    DB_NAME="${DB_NAME}_marco"
+    
     # Logging which database will be processed now.
     echo ""
     echo "Processing the database: ${DB_NAME}"
@@ -86,6 +92,7 @@ do
         fi;
 
         INPUT_FILES=()
+        REFERENCE_INPUT_FILES=()
         TBS_NAME=()
         # define tables of type data to insert into raster file.
         # the tables to export data from database.
@@ -110,12 +117,29 @@ do
 
                 # output file name
                 OUTPUT_FILE="${TB_NAME}_${BASE_YEAR}"
+                REFERENCE_OUTPUT_FILE=""
+                echo "DEBUG INFO"
+                echo "OUTPUT_FILE=${OUTPUT_FILE}"
                 
                 # generate a color palette to current data
-                generate_palette_entries "${TB_NAME}" "${OUTPUT_DIR}" "${PGCONNECTION}"
+                generate_palette_entries "${TB_NAME}" "${OUTPUT_DIR}" "${PGCONNECTION}" "${BASE_YEAR}"
 
                 # rasterize vector table 
                 generate_raster "${TB_NAME}" "${BBOX_FINAL}" "${PIXEL_SIZE}" "${PGCONNECTION}" "${OUTPUT_DIR}/${OUTPUT_FILE}"
+
+                # If there is a difference between the REFERENCE YEAR and the BASE YEAR of the biome, construct the mosaic for the reference year.
+                if [[ ! "${BASE_YEAR}" = "${REFERENCE_YEAR}" ]]; then
+                    # output file name
+                    REFERENCE_OUTPUT_FILE="${TB_NAME}_${REFERENCE_YEAR}"
+                    echo "DEBUG INFO"
+                    echo "REFERENCE_OUTPUT_FILE=${REFERENCE_OUTPUT_FILE}"
+                    
+                    # generate a color palette to current data
+                    generate_palette_entries "${TB_NAME}" "${OUTPUT_DIR}" "${PGCONNECTION}" "${REFERENCE_YEAR}"
+
+                    # rasterize vector table 
+                    generate_raster "${TB_NAME}" "${BBOX_FINAL}" "${PIXEL_SIZE}" "${PGCONNECTION}" "${OUTPUT_DIR}/${REFERENCE_OUTPUT_FILE}" "${REFERENCE_YEAR}"
+                fi;
 
                 # store the table name to clean the database at the end
                 TBS_NAME+=("${TB_NAME}")
@@ -125,13 +149,24 @@ do
                     # store the generated file into input list used in next step
                     INPUT_FILES+=("${OUTPUT_FILE}.tif")
                 fi;
+                
+                if [[ -f "${OUTPUT_DIR}/${REFERENCE_OUTPUT_FILE}.tif" ]];
+                then
+                    # store the generated file into input list used in next step
+                    REFERENCE_INPUT_FILES+=("${REFERENCE_OUTPUT_FILE}.tif")
+
+                elif [[ -f "${OUTPUT_DIR}/${OUTPUT_FILE}.tif" ]]; then
+                    # using the default generated file
+                    REFERENCE_INPUT_FILES+=("${OUTPUT_FILE}.tif")
+                fi;
+                
             else
                 echo "Table do not exists: ${TB_NAME}"
             fi;
         done # end build raster for each table
 
         # ------------------------------------------------ #
-        # GENERATE ONE RASTER TO BIOME
+        # GENERATE ONE RASTER FOR THE CURRENT BIOME AND BASE YEAR
         # ------------------------------------------------ #
         # build the biome raster using each table raster
         INPUT_FILES=$(echo ${INPUT_FILES[@]})
@@ -141,7 +176,7 @@ do
         generate_final_raster "${INPUT_FILES}" "${OUTPUT_FILE}" "${OUTPUT_DIR}"
 
         # join all style fractions, sfl and sldf into one style file for each style format
-        generate_main_palette_entries "${OUTPUT_FILE}" "${OUTPUT_DIR}"
+        generate_main_palette_entries "${OUTPUT_FILE}" "${OUTPUT_DIR}" "${BASE_YEAR}"
         
         # generate the style as QML file
         QML_FRACTIONS=("${OUTPUT_FILE}.sfl")
@@ -157,14 +192,44 @@ do
         # generate the ZIP file
         generate_final_zip_file "${OUTPUT_FILE}" "${OUTPUT_DIR}"
 
+        # remove temporary files
+        remove_temporary_files "${INPUT_FILES}" "${OUTPUT_DIR}" "file"
+
+        # ------------------------------------------------ #
+        # GENERATE ONE RASTER FOR THE CURRENT BIOME AND REFERENCE YEAR
+        # ------------------------------------------------ #
+        if [[ ! "${BASE_YEAR}" = "${REFERENCE_YEAR}" ]]; then
+            # build the biome raster using each table raster
+            REFERENCE_INPUT_FILES=$(echo ${REFERENCE_INPUT_FILES[@]})
+            OUTPUT_FILE="prodes_${TARGET_NAME}_${REFERENCE_YEAR}"
+
+            # generate the final file with all intermediary files
+            generate_final_raster "${REFERENCE_INPUT_FILES}" "${OUTPUT_FILE}" "${OUTPUT_DIR}"
+
+            # join all style fractions, sfl and sldf into one style file for each style format
+            generate_main_palette_entries "${OUTPUT_FILE}" "${OUTPUT_DIR}" "${REFERENCE_YEAR}"
+            
+            # generate the style as QML file
+            QML_FRACTIONS=("${OUTPUT_FILE}.sfl")
+            generate_qml_file "${QML_FRACTIONS}" "${OUTPUT_FILE}" "${OUTPUT_DIR}"
+            
+            # generate the style as SLD file
+            SLD_FRACTIONS=("${OUTPUT_FILE}.sldf")
+            generate_sld_file "${SLD_FRACTIONS}" "${OUTPUT_FILE}" "${OUTPUT_DIR}"
+
+            # remove temporary files
+            remove_temporary_files "${REFERENCE_INPUT_FILES}" "${OUTPUT_DIR}" "file"
+        fi;
         # drop the temporary tables
         TBS_NAME=$(echo ${TBS_NAME[@]})
         drop_temporary_table "${TBS_NAME}"
-        # remove temporary files
-        remove_temporary_files "${INPUT_FILES}" "${OUTPUT_DIR}" "file"
     else
-        # if skip build of each biome mosaic we need the output file to build BR mosaic
-        OUTPUT_FILE="prodes_${TARGET_NAME}_${BASE_YEAR}"
+        # if skip build of each biome mosaic we need the name for output file to build BR mosaic
+        if [[ ! "${BASE_YEAR}" = "${REFERENCE_YEAR}" ]]; then
+            OUTPUT_FILE="prodes_${TARGET_NAME}_${REFERENCE_YEAR}"
+        else
+            OUTPUT_FILE="prodes_${TARGET_NAME}_${BASE_YEAR}"
+        fi;
     fi;
 
     # store file name of each biome raster, used to make BR mosaic
@@ -175,7 +240,7 @@ do
 
 done # end of biome list
 
-# if the Brasil raster mosaic is enable, join all rasters into one
+# if the Brasil raster mosaic is enable, join all rasters into one using the REFERENCE_YEAR input rasters
 if [[ "${BUILD_BR_MOSAIC}" = "yes" ]];
 then
     INPUT_FILES_MOSAIC=$(echo ${INPUT_FILES_MOSAIC[@]})
@@ -188,10 +253,10 @@ then
 
     if [[ "${BUILD_FIRES_DASHBOARD_PRODUCTS}" = "yes" ]];
     then
-        # generate a base map from prodes with forest + non-forest + hydrography to use in the fires dashboard
+        # generate a base map from prodes with forest + non-forest + hydrography
         generate_fires_dashboard_products "${OUTPUT_FILE}" "${OUTPUT_DIR}" "${REFERENCE_YEAR}" "p1"
 
-        # generate a map from deforestation data from more than 3 years ago to use on the fires dashboard
+        # generate a map from deforestation data from more than 3 years ago
         generate_fires_dashboard_products "${OUTPUT_FILE}" "${OUTPUT_DIR}" "${REFERENCE_YEAR}" "p2"
 
         # generate a map only with recent deforestation less than 3 years old
@@ -199,7 +264,7 @@ then
     fi;
 
     # join all style fractions into one style file for each style format, QML and SLD
-    generate_main_palette_entries "${OUTPUT_FILE}" "${OUTPUT_DIR}"
+    generate_main_palette_entries "${OUTPUT_FILE}" "${OUTPUT_DIR}" "${REFERENCE_YEAR}"
 
     # generate the style as QML file
     QML_FRACTIONS=("${OUTPUT_FILE}.sfl")

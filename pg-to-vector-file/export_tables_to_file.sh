@@ -10,8 +10,12 @@
 . ./functions_lib.sh
 
 # loop to export all tables of each database for an schema define into pgconfig file
-for DB_NAME in ${PRODES_DBS[@]}
+length=${#PRODES_DBS[@]}
+for ((i=0; i<$length; ++i));
 do
+    DB_NAME=${PRODES_DBS[$i]}
+    BASE_YEAR=${BASE_YEARS[$i]}
+
     # The database name based in biome name
     database="prodes_${DB_NAME}_nb_p${BASE_YEAR}"
     gpkg_suffix=""
@@ -21,6 +25,8 @@ do
     else
         gpkg_suffix="_nb"
     fi;
+    # used to identify the Marco UE databases
+    database="${database}_marco"
 
     # include one new column to export data of PRODES "amazonia" and "amazonia_legal"
     if [[ "${DB_NAME}" = "amazonia" || "${DB_NAME}" = "amazonia_legal" ]]; then
@@ -29,6 +35,8 @@ do
 
     # the file name of GPKG file when SAME_FILE="yes"
     GPKG_FNAME="prodes_${DB_NAME}${gpkg_suffix}"
+    # and the GeoPackage file name for MARCO UE data
+    GPKG_FNAME_MARCO="${GPKG_FNAME}_marco"
 
     # Set a default local directory if not set
     if [[ "" = "${BASE_PATH_DATA}" ]]; then
@@ -46,11 +54,16 @@ do
         rm -f ${OUTPUT_DATA}/${GPKG_FNAME}.gpkg.zip
     fi;
 
+    # fix year column
+    if [[ "${FIX_YEAR_COLUMN}" = "yes" ]]; then
+        fix_year_column
+    fi;
+
     # creating output directory to put files
     mkdir -p "${OUTPUT_DATA}"
 
-    SQL_TABLES="select table_name from information_schema.tables where table_schema = '${schema}'"
-    SQL_TABLES="${SQL_TABLES} and table_type = '${TABLE_TYPE}' and table_name NOT IN ('geometry_columns','geography_columns','spatial_ref_sys')"
+    SQL_TABLES="SELECT table_name FROM information_schema.tables WHERE table_schema = '${schema}'"
+    SQL_TABLES="${SQL_TABLES} AND table_type = '${TABLE_TYPE}' AND table_name NOT IN ('geometry_columns','geography_columns','spatial_ref_sys')"
 
     if [[ ${#FILTER[@]} -gt 0 ]]; then
         OR_TBS=""
@@ -59,17 +72,17 @@ do
             if [[ ! "" = "${OR_TBS}" ]]; then
                 OR_TBS="${OR_TBS} OR"
             fi;
-            OR_TBS="${OR_TBS} table_name ilike '${TABLE_NAME}%' "
+            OR_TBS="${OR_TBS} table_name ILIKE '${TABLE_NAME}%' "
         done
 
         SQL_TABLES="${SQL_TABLES} AND (${OR_TBS})"
     fi;
 
     if [[ "${DB_NAME}" = "amazonia" ]]; then
-        SQL_TABLES="${SQL_TABLES} and table_name ilike '%_biome'"
+        SQL_TABLES="${SQL_TABLES} AND table_name ILIKE '%_biome'"
     else
         # Amazonia Legal or other databases
-        SQL_TABLES="${SQL_TABLES} and table_name NOT ilike '%_biome'"
+        SQL_TABLES="${SQL_TABLES} AND table_name NOT ILIKE '%_biome'"
     fi;
 
     TABLES=($(${PG_BIN}/psql ${PG_CON} -t -c "${SQL_TABLES};"))
@@ -81,7 +94,7 @@ do
         fix_geom "${TABLE}"
 
         YEAR_COL="year"
-        YEAR_TYPE_SQL="SELECT pg_typeof(year)::text FROM ${schema}.${TABLE} limit 1"
+        YEAR_TYPE_SQL="SELECT pg_typeof(year)::text FROM ${schema}.${TABLE} LIMIT 1"
         YEAR_TYPE=($(${PG_BIN}/psql ${PG_CON} -t -c "${YEAR_TYPE_SQL};"))
         if [[ "${YEAR_TYPE}" = "integer" ]]; then
             YEAR_COL="year::integer"
@@ -108,26 +121,32 @@ do
         #         export_shp "${DATA_QUERY_CLS}" "${TABLE}_${CLASS_NAME}"
         #     done
         # else
-            export_shp "${DATA_QUERY}" "${TABLE}"
+        #    export_shp "${DATA_QUERY}" "${TABLE}"
         # fi;
 
-        export_gpkg "${DATA_QUERY}" "${TABLE}"
+        export_shp "${DATA_QUERY}" "${TABLE}"
+        export_gpkg "${DATA_QUERY}" "${TABLE}" "${GPKG_FNAME}"
 
-        # remove intermediate files
-        if [[ "${RM_OUT}" = "yes" ]]; then
-            if [[ "${SHP}" = "yes" ]]; then
-                rm -f ${OUTPUT_DATA}/"${TABLE}*".{shp,shx,prj,dbf}
+        # to export MARCO UE files
+        # Check if TABLE name starts with $TABLE_LIKE
+        for TABLE_LIKE in ${TABLES_LIKE[@]}
+        do
+            if [[ "${TABLE}" == "${TABLE_LIKE}"* ]]; then
+
+                DATA_QUERY_MARCO="${DATA_QUERY} WHERE year<=2020"
+                TABLE_MARCO="${TABLE}_marco"
+
+                export_shp "${DATA_QUERY_MARCO}" "${TABLE_MARCO}"
+                export_gpkg "${DATA_QUERY_MARCO}" "${TABLE_MARCO}" "${GPKG_FNAME_MARCO}"
             fi;
-            if [[ "${GPKG}" = "yes" ]]; then
-                FNAME="${TABLE}"
-                if [[ ! "$SAME_FILE" = "yes" ]]; then
-                    # only remove the gpkg if same file is disabled or the process will be overwrite the zip file content
-                    FNAME="${GPKG_FNAME}"
-                    rm -f ${OUTPUT_DATA}/${FNAME}.gpkg
-                fi;
-            fi;
-        fi;
+        done
     done
+    # remove intermediary files
+    if [[ "${RM_OUT}" = "yes" ]]; then
+        rm -f ${OUTPUT_DATA}/*.{shp,shx,prj,dbf,gpkg}
+        # remove shapes of marco
+        rm -f ${OUTPUT_DATA}/*_marco.zip
+    fi;
 
 # end of biome list
 done

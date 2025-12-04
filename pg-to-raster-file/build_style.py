@@ -20,10 +20,13 @@ class BuildStyle:
         self.DATA_DIR=os.getenv("DATA_DIR", data_dir)
         # the output file name
         self.FILE_NAME=os.getenv("FILE_NAME", output_file_name)
+        # the reference year used to build BR mosaic
+        self.REF_YEAR=os.getenv("REF_YEAR")
 
     def __listFractionFiles(self, type):
         allFractionFiles = []
-        for filename in glob.iglob(f"{self.DATA_DIR}/**/*.{type}", recursive=True):
+        file_suffix=f"_{self.REF_YEAR}" if self.REF_YEAR else ""
+        for filename in glob.iglob(f"{self.DATA_DIR}/**/*{file_suffix}.{type}", recursive=True):
             allFractionFiles.append(filename)
         return allFractionFiles
 
