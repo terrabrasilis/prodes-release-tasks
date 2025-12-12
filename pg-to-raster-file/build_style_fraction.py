@@ -112,7 +112,7 @@ class BuildQML:
         size is the number of colors is necessary to build the palette
         """
         for tb in self.TABLE_NAMES:
-            if tb in self.TB_NAME:
+            if self.TB_NAME is not None and tb in self.TB_NAME:
                 aFunc=getattr(self, tb)
                 return aFunc(size)
         # if search ends without colors, use the forest as default
@@ -128,15 +128,17 @@ class BuildQML:
         where=f"WHERE year<={self.REF_YEAR}" if self.REF_YEAR else ""
         sql=f"SELECT class_number, class_name FROM public.burn_{self.TB_NAME} {where} GROUP BY 1,2 ORDER BY 1 ASC"
         class_data=self.__execute_sql(sql)
-        colors=self.__get_colors(len(class_data))
-        c=0
-        for cdata in class_data:
-            class_number=cdata[0]
-            class_name=cdata[1]
-            color=colors[c]
-            c+=1
-            qml_fraction.append(f"<paletteEntry color=\"{color}\" label=\"{class_number} {class_name}\" value=\"{class_number}\" alpha=\"255\"/>")
-            sld_fraction.append(f"<sld:ColorMapEntry color=\"{color}\" label=\"{class_number} {class_name}\" quantity=\"{class_number}\"/>")
+        if class_data is not None:
+            colors=self.__get_colors(len(class_data))
+            c=0
+            for cdata in class_data:
+                class_number=cdata[0]
+                class_name=cdata[1]
+                class_name="d2020 + marco_d2020" if class_name in ["d2020","marco_d2020"] else class_name
+                color=colors[c]
+                c+=1
+                qml_fraction.append(f"<paletteEntry color=\"{color}\" label=\"{class_number} {class_name}\" value=\"{class_number}\" alpha=\"255\"/>")
+                sld_fraction.append(f"<sld:ColorMapEntry color=\"{color}\" label=\"{class_number} {class_name}\" quantity=\"{class_number}\"/>")
 
         return "\n".join(qml_fraction), "\n".join(sld_fraction)
 
