@@ -119,11 +119,11 @@ get_class_number(){
             ;;
 
         biome | amazon | brazilian)
-            echo "100::integer as class_number, 'Vegetação Nativa' as class_name, '2000'::integer as year"
+            echo "100::integer as class_number, 'Vegetação nativa florestal' as class_name, '2000'::integer as year"
             ;;
 
         no)
-            echo "101::integer as class_number, 'Não Floresta' as class_name, '2000'::integer as year"
+            echo "101::integer as class_number, 'Vegetação nativa não florestal' as class_name, '2000'::integer as year"
             ;;
         cloud)
             echo "99::integer as class_number, 'Nuvem' as class_name, '2000'::integer as year"
@@ -148,6 +148,7 @@ create_table_to_burn(){
     if [[ ! "${2}" = "" ]]; then
         WHERE="${2}"
     fi;
+    
     DATA_PATTERN=$(get_class_number "${1}")
     SQL="CREATE TABLE IF NOT EXISTS public.burn_${TB} AS"
     SQL="${SQL} WITH target AS ("
