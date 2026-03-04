@@ -14,13 +14,15 @@ class BuildQML:
         # fixed color to forest used by default background for biome border
         self.forest=lambda:["#308703"]
         # the table name patterns to select an appropriate color palette 
-        self.TABLE_NAMES=["no_forest","hydrography","accumulated","yearly","residual","cloud"]
+        self.TABLE_NAMES=["no_forest","hydrography","accumulated","yearly","residual","cloud","marco_eu"]
         # fixed color to hydrography
         self.hydrography=lambda hm:["#0513b1"]
         # fixed color to non forest
         self.no_forest=lambda hm:["#f213f9"]
         # fixed color to cloud
         self.cloud=lambda hm:["#37fef4"]
+        # fixed color to Marco EU
+        self.marco_eu=lambda hm:["#ac2fff"]
         # used to get palette for accumulated deforestations
         self.accumulated=lambda hm:["#ffff00"]
         # used to get palette for yearly deforestations
@@ -112,7 +114,7 @@ class BuildQML:
         size is the number of colors is necessary to build the palette
         """
         for tb in self.TABLE_NAMES:
-            if tb in self.TB_NAME:
+            if self.TB_NAME is not None and tb in self.TB_NAME:
                 aFunc=getattr(self, tb)
                 return aFunc(size)
         # if search ends without colors, use the forest as default
@@ -128,15 +130,16 @@ class BuildQML:
         where=f"WHERE year<={self.REF_YEAR}" if self.REF_YEAR else ""
         sql=f"SELECT class_number, class_name FROM public.burn_{self.TB_NAME} {where} GROUP BY 1,2 ORDER BY 1 ASC"
         class_data=self.__execute_sql(sql)
-        colors=self.__get_colors(len(class_data))
-        c=0
-        for cdata in class_data:
-            class_number=cdata[0]
-            class_name=cdata[1]
-            color=colors[c]
-            c+=1
-            qml_fraction.append(f"<paletteEntry color=\"{color}\" label=\"{class_number} {class_name}\" value=\"{class_number}\" alpha=\"255\"/>")
-            sld_fraction.append(f"<sld:ColorMapEntry color=\"{color}\" label=\"{class_number} {class_name}\" quantity=\"{class_number}\"/>")
+        if class_data is not None:
+            colors=self.__get_colors(len(class_data))
+            c=0
+            for cdata in class_data:
+                class_number=cdata[0]
+                class_name=cdata[1]
+                color=colors[c]
+                c+=1
+                qml_fraction.append(f"<paletteEntry color=\"{color}\" label=\"{class_number} {class_name}\" value=\"{class_number}\" alpha=\"255\"/>")
+                sld_fraction.append(f"<sld:ColorMapEntry color=\"{color}\" label=\"{class_number} {class_name}\" quantity=\"{class_number}\"/>")
 
         return "\n".join(qml_fraction), "\n".join(sld_fraction)
 

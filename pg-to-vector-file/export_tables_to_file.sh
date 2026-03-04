@@ -125,7 +125,10 @@ do
         # fi;
 
         export_shp "${DATA_QUERY}" "${TABLE}"
-        export_gpkg "${DATA_QUERY}" "${TABLE}" "${GPKG_FNAME}"
+        # to avoid insert marco eu table inside geopackage
+        if [[ ! ${TABLE} == marco_eu_deforestation* ]]; then
+            export_gpkg "${DATA_QUERY}" "${TABLE}" "${GPKG_FNAME}"
+        fi;
 
         # to export MARCO UE files
         # Check if TABLE name starts with $TABLE_LIKE
@@ -135,9 +138,15 @@ do
 
                 DATA_QUERY_MARCO="${DATA_QUERY} WHERE year<=2020"
                 TABLE_MARCO="${TABLE}_marco"
+                if [[ ${TABLE} == marco_eu_deforestation* ]]; then
+                    TABLE_MARCO="${TABLE}"
+                    export_shp "${DATA_QUERY_MARCO}" "${TABLE_MARCO}"
+                fi;
 
-                export_shp "${DATA_QUERY_MARCO}" "${TABLE_MARCO}"
-                export_gpkg "${DATA_QUERY_MARCO}" "${TABLE_MARCO}" "${GPKG_FNAME_MARCO}"
+                # to avoid insert yearly_deforestation_smaller_than_625ha_biome table inside marco geopackage
+                if [[ ! "${TABLE}" == *"smaller_than_625ha"* ]]; then
+                    export_gpkg "${DATA_QUERY_MARCO}" "${TABLE_MARCO}" "${GPKG_FNAME_MARCO}"
+                fi;
             fi;
         done
     done
