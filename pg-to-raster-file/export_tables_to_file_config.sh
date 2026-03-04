@@ -11,19 +11,19 @@ BASE_PATH_DATA="/main/storage/exported/files"
 # Used as a database name suffix. Consider that the default database name is prodes_<biome>_nb_p<BASE_YEAR>
 #BASE_YEARS=("2024" "2024" "2025" "2024" "2025" "2024") # "2024")
 
-PRODES_DBS=("amazonia")
-BASE_YEARS=("2024")
+PRODES_DBS=("pampa" "caatinga" "pantanal" "mata_atlantica" "cerrado" "amazonia" "amazonia_legal")
+BASE_YEARS=("2024" "2024" "2025" "2024" "2025" "2025" "2025")
 #
 # join all rasters into a single file. If disable, the fires dashboard rasters do not generated. Use "yes" to enable.
-BUILD_BR_MOSAIC="no"
+BUILD_BR_MOSAIC="yes"
 # if you want to skip building each biome raster file. Use "yes" to enable.
 REBUILD_ONLY_BR_MOSAIC="no"
 # if you want to build the fires dashboard input products. Use "yes" to enable.
-BUILD_FIRES_DASHBOARD_PRODUCTS="no"
+BUILD_FIRES_DASHBOARD_PRODUCTS="yes"
 #
 
 # remove temporary files and tables? Use "yes" to enable.
-REMOVE_TEMPORARY_ARTIFACTS="no"
+REMOVE_TEMPORARY_ARTIFACTS="yes"
 
 #
 # default values for BBOX and Pixel size.
