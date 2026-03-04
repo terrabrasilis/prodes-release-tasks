@@ -2,12 +2,10 @@
 #
 # list of biomes to export data and list of year for each database suffix
 # PRODES_DBS=("pampa" "caatinga" "pantanal" "mata_atlantica" "cerrado" "amazonia" "amazonia_legal")
-# BASE_YEARS=("2024" "2024" "2025" "2024" "2025" "2024" "2024")
-#PRODES_DBS=("cerrado" "pantanal")
-#PRODES_DBS=("pampa" "caatinga" "mata_atlantica" "amazonia" "amazonia_legal")
+# BASE_YEARS=("2024" "2024" "2025" "2024" "2025" "2025" "2025")
 PRODES_DBS=("amazonia" "amazonia_legal")
 # Used as a database name suffix. Consider that the default database name is prodes_<biome>_nb_p<BASE_YEAR>
-BASE_YEARS=("2024" "2024")
+BASE_YEARS=("2025" "2025")
 #
 # if you want export only filtered tables, set the table names into FILTER variable below and removing the character # to uncomment that.
 # FILTER=("table_name_a" "table_name_b" "table_name_c")
@@ -35,10 +33,10 @@ RM_OUT="yes"
 FIX_GEOM="no"
 #
 # Fix FID before export. Make an update into sequential numeric column used as primary key.
-FIX_FID="no"
+FIX_FID="yes"
 #
-# used to cast the year column to integer and update the value using the class_name data
-FIX_YEAR_COLUMN="no"
+# used to cast the year column to integer and update the value using the class_name data. Only applied into the list of tables in TABLES_LIKE
+FIX_YEAR_COLUMN="yes"
 #
 # Export to Shapefile
 SHP="yes"
@@ -53,4 +51,4 @@ TABLE_TYPE='BASE TABLE'
 #TABLE_TYPE='VIEW'
 #
 # list of tables prefix used to fix year column and export MARCO UE files
-TABLES_LIKE=("accumulated" "residual" "yearly")
+TABLES_LIKE=("accumulated" "residual" "yearly" "marco_eu_deforestation")
