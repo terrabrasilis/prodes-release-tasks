@@ -144,12 +144,14 @@ do
                 # store the table name to clean the database at the end
                 TBS_NAME+=("${TB_NAME}")
 
+                # to build the biome raster, for the current biome year, in the next step
                 if [[ -f "${OUTPUT_DIR}/${OUTPUT_FILE}.tif" ]];
                 then
                     # store the generated file into input list used in next step
                     INPUT_FILES+=("${OUTPUT_FILE}.tif")
                 fi;
                 
+                # to build the biome raster, for the reference year, in the next step
                 if [[ -f "${OUTPUT_DIR}/${REFERENCE_OUTPUT_FILE}.tif" ]];
                 then
                     # store the generated file into input list used in next step
@@ -273,6 +275,9 @@ then
     # generate the style as SLD file
     SLD_FRACTIONS=("${OUTPUT_FILE}.sldf")
     generate_sld_file "${SLD_FRACTIONS}" "${OUTPUT_FILE}" "${OUTPUT_DIR}"
+
+    # generate the report file
+    generate_report_file "${OUTPUT_FILE}" "${OUTPUT_DIR}"
 
 fi;
 
