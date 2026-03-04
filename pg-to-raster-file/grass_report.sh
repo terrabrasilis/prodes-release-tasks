@@ -13,5 +13,5 @@ band=1 output="${FILE_NAME}" --overwrite -o
 g.region -p
 
 r.report map=${FILE_NAME} units="k" null_value="*" page_length=0 \
-page_width=79 nsteps=255 sort="asc" \
+page_width=79 nsteps=255 sort="asc" -n \
 output="${DATA_DIR}/${FILE_NAME}.txt" --overwrite
