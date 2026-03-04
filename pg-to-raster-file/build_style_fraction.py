@@ -14,13 +14,15 @@ class BuildQML:
         # fixed color to forest used by default background for biome border
         self.forest=lambda:["#308703"]
         # the table name patterns to select an appropriate color palette 
-        self.TABLE_NAMES=["no_forest","hydrography","accumulated","yearly","residual","cloud"]
+        self.TABLE_NAMES=["no_forest","hydrography","accumulated","yearly","residual","cloud","marco_eu"]
         # fixed color to hydrography
         self.hydrography=lambda hm:["#0513b1"]
         # fixed color to non forest
         self.no_forest=lambda hm:["#f213f9"]
         # fixed color to cloud
         self.cloud=lambda hm:["#37fef4"]
+        # fixed color to Marco EU
+        self.marco_eu=lambda hm:["#ac2fff"]
         # used to get palette for accumulated deforestations
         self.accumulated=lambda hm:["#ffff00"]
         # used to get palette for yearly deforestations
@@ -134,7 +136,6 @@ class BuildQML:
             for cdata in class_data:
                 class_number=cdata[0]
                 class_name=cdata[1]
-                class_name="d2020 + marco_d2020" if class_name in ["d2020","marco_d2020"] else class_name
                 color=colors[c]
                 c+=1
                 qml_fraction.append(f"<paletteEntry color=\"{color}\" label=\"{class_number} {class_name}\" value=\"{class_number}\" alpha=\"255\"/>")

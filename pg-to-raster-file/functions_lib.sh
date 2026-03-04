@@ -34,6 +34,11 @@ get_cloud_table_name(){
     echo "${TB}"
 }
 
+get_marco_eu_deforestation_table_name(){
+    TB=$(get_table "${1}" "marco_eu_deforestation")
+    echo "${TB}"
+}
+
 get_no_forest_table_name(){
     TARGET="${1}"
     # default name
@@ -77,6 +82,10 @@ get_hydrography_nf_table_name(){
 
 get_cloud_nf_table_name(){
     echo "cloud_nf_biome"
+}
+
+get_marco_eu_deforestation_nf_table_name(){
+    echo "marco_eu_deforestation_nf_biome"
 }
 
 get_accumulated_nf_table_name(){
@@ -127,6 +136,9 @@ get_class_number(){
             ;;
         cloud)
             echo "99::integer as class_number, 'Nuvem' as class_name, '2000'::integer as year"
+            ;;
+        marco)
+            echo "220::integer as class_number, 'Marco EU' as class_name, '2020'::integer as year"
             ;;
         *)
             echo "255::integer as class_number, 'no data' as class_name, '2000'::integer as year"
@@ -237,6 +249,42 @@ generate_final_raster(){
     cd -
 }
 
+generate_br_and_marco_products(){
+    INPUT_FILE="${1}"
+    DATA_DIR="${2}"
+    BASE_YEAR="${3}"
+    PRODUCT="${4}"
+
+    # the pixel value that represents deforestation and residual after 2020
+    DEFORESTATION_PV="21"
+    RESIDUAL_PV="61"
+    # suffix product name
+    PRODUCT_NAME="prodes_brasil"
+
+    if [[ "br" = "${PRODUCT}" ]]; then
+        # change pixel value from no-forest(101) to forest(100)
+        CALC="numpy.where((A==101),100,A)"
+        PRODUCT_NAME="${PRODUCT_NAME}_${BASE_YEAR}"
+    elif [[ "marco" = "${PRODUCT}" ]]; then
+        # change pixel values from no-forest(101) to forest(100) AND after 2020 of deforestation(>2020) to forest(100)
+        #CALC="((A==101)*100 + 100*logical_and(A>=${DEFORESTATION_PV},A<=49) + 100*logical_and(A>=${RESIDUAL_PV},A<=90))"
+        CALC="numpy.where((A==101),100,numpy.where(logical_and(A>=${DEFORESTATION_PV},A<=49),100,numpy.where(logical_and(A>=${RESIDUAL_PV},A<=90),100,A)))"
+        PRODUCT_NAME="${PRODUCT_NAME}_marco_${BASE_YEAR}"
+    else
+        echo "unrecognized option for product: ${PRODUCT}"
+        exit
+    fi;
+
+    cd ${DATA_DIR}
+
+    gdal_calc.py --co="COMPRESS=LZW" --co="BIGTIFF=YES" --NoDataValue=255 \
+    -A "${INPUT_FILE}.tif" --type=Byte --quiet \
+    --calc="${CALC}" \
+    --outfile="${PRODUCT_NAME}.tif"
+
+    cd -
+}
+
 generate_fires_dashboard_products(){
     INPUT_FILE="${1}"
     DATA_DIR="${2}"
@@ -249,7 +297,7 @@ generate_fires_dashboard_products(){
     CALC=""
 
     if [[ "p1" = "${PRODUCT}" ]]; then
-        # generate a map only with forest + no-forest + hidrography
+        # generate a map only with forest(100) + no-forest(101) + hidrography(91)
         CALC="((A==101)*101 + (A==91)*91 + (A==99)*100 + (A==100)*100 + 100*logical_and(A>=0,A<=90))"
     elif [[ "p2" = "${PRODUCT}" ]]; then
         # generate a map only with consolidate deforestation from more than 3 years ago
@@ -292,6 +340,7 @@ generate_main_palette_entries(){
     if [[ ! "" = "${3}" ]]; then
         export REF_YEAR="${3}"
     fi;
+    export OUTPUT_TYPE="${4}"
 
     # used to join each QML and SLD biome files into one mosaic style file
     python3 build_style.py
@@ -315,7 +364,7 @@ generate_final_zip_file(){
     FILE_NAME="${1}"
     DATA_DIR="${2}"
 
-    zip -j ${DATA_DIR}/${FILE_NAME}.zip ${DATA_DIR}/${FILE_NAME}.{tif,txt,sld,qml}
+    zip -j ${DATA_DIR}/${FILE_NAME}.zip ${DATA_DIR}/${FILE_NAME}.{tif,txt,qml}
 }
 
 add_qml_start(){

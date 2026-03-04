@@ -22,6 +22,13 @@ class BuildStyle:
         self.FILE_NAME=os.getenv("FILE_NAME", output_file_name)
         # the reference year used to build BR mosaic
         self.REF_YEAR=os.getenv("REF_YEAR")
+        # to build br style, biome style or marco style
+        self.OUTPUT_TYPE=os.getenv("OUTPUT_TYPE", "biome")
+
+        if self.OUTPUT_TYPE == 'br':
+            self.FILE_NAME = f"{self.FILE_NAME}_{self.REF_YEAR}"
+        elif self.OUTPUT_TYPE == 'marco':
+            self.FILE_NAME = f"{self.FILE_NAME}_marco_{self.REF_YEAR}"
 
     def __listFractionFiles(self, type):
         allFractionFiles = []
@@ -45,16 +52,21 @@ class BuildStyle:
     def __mergeIntoMain(self, aFraction, type):
         xmlFraction=xml_tag.fromstring(aFraction)
         for child in xmlFraction:
-            referency_value = child.attrib['value'] if type=='sfl' else child.attrib['quantity']
-            if referency_value not in self.mainFractions:
-                
-                paletteEntry=""
-                if type=='sfl':
-                    paletteEntry=f"""<{child.tag} color="{child.attrib['color']}" label="{child.attrib['label']}" value="{child.attrib['value']}" alpha="{child.attrib['alpha']}"/>"""
-                else:
-                    paletteEntry=f"""<sld:ColorMapEntry color="{child.attrib['color']}" label="{child.attrib['label']}" quantity="{child.attrib['quantity']}"/>"""
-                
-                self.mainFractions[int(referency_value)]=paletteEntry
+            referency_value = int(child.attrib['value'] if type=='sfl' else child.attrib['quantity'])
+            if self.OUTPUT_TYPE == 'br' and referency_value==101:
+                print("Don't include the non forest style entry into the final file.")
+            elif self.OUTPUT_TYPE == 'marco' and (referency_value==101 or (referency_value>=21 and referency_value<=49) or (referency_value>=61 and referency_value<=90)):
+                print("Don't include the non forest style entry into the final file.")
+            else:
+                if referency_value not in self.mainFractions:
+                    
+                    paletteEntry=""
+                    if type=='sfl':
+                        paletteEntry=f"""<{child.tag} color="{child.attrib['color']}" label="{child.attrib['label']}" value="{child.attrib['value']}" alpha="{child.attrib['alpha']}"/>"""
+                    else:
+                        paletteEntry=f"""<sld:ColorMapEntry color="{child.attrib['color']}" label="{child.attrib['label']}" quantity="{child.attrib['quantity']}"/>"""
+                    
+                    self.mainFractions[referency_value]=paletteEntry
 
 
     def buildAndSaveFile(self):
