@@ -124,7 +124,7 @@ do
         #    export_shp "${DATA_QUERY}" "${TABLE}"
         # fi;
 
-        export_shp "${DATA_QUERY}" "${TABLE}"
+        export_shp "${DATA_QUERY}" "${TABLE}_${DB_NAME}"
         # to avoid insert marco eu table inside geopackage
         if [[ ! ${TABLE} == marco_eu_deforestation* ]]; then
             export_gpkg "${DATA_QUERY}" "${TABLE}" "${GPKG_FNAME}"
