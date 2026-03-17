@@ -140,7 +140,7 @@ do
                 TABLE_MARCO="${TABLE}_marco"
                 if [[ ${TABLE} == marco_eu_deforestation* ]]; then
                     TABLE_MARCO="${TABLE}"
-                    export_shp "${DATA_QUERY_MARCO}" "${TABLE_MARCO}"
+                    #export_shp "${DATA_QUERY_MARCO}" "${TABLE_MARCO}"
                 fi;
 
                 # to avoid insert yearly_deforestation_smaller_than_625ha_biome table inside marco geopackage
