@@ -22,7 +22,7 @@ class BuildQML:
         # fixed color to cloud
         self.cloud=lambda hm:["#37fef4"]
         # fixed color to Marco EU
-        self.marco_eu=lambda hm:["#ac2fff"]
+        self.marco_eu=lambda hm:["#b14e21"]
         # used to get palette for accumulated deforestations
         self.accumulated=lambda hm:["#ffff00"]
         # used to get palette for yearly deforestations
@@ -41,6 +41,18 @@ class BuildQML:
         self.PG_CONN=os.getenv("PG_CONN")
         # the reference year used to build BR mosaic
         self.REF_YEAR=os.getenv("REF_YEAR")
+        # the current biome
+        self.TARGET=os.getenv("TARGET")
+        # the relation of biomes that need the "florestal" term into class name
+        self.FOREST_REF={
+            "pampa": "",
+            "caatinga": "",
+            "pantanal": "florestal",
+            "mata_atlantica": "florestal",
+            "cerrado": "",
+            "amazonia": "florestal",
+            "amazonia_legal": "florestal"
+            }
 
     def __yellow(self, how_many=1):
         """
@@ -135,7 +147,7 @@ class BuildQML:
             c=0
             for cdata in class_data:
                 class_number=cdata[0]
-                class_name=cdata[1]
+                class_name=f"{cdata[1]} {self.FOREST_REF[self.TARGET]}" if class_number==100 else cdata[1]
                 color=colors[c]
                 c+=1
                 qml_fraction.append(f"<paletteEntry color=\"{color}\" label=\"{class_number} {class_name}\" value=\"{class_number}\" alpha=\"255\"/>")

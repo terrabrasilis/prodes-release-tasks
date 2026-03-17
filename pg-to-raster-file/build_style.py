@@ -53,18 +53,23 @@ class BuildStyle:
         xmlFraction=xml_tag.fromstring(aFraction)
         for child in xmlFraction:
             referency_value = int(child.attrib['value'] if type=='sfl' else child.attrib['quantity'])
-            if self.OUTPUT_TYPE == 'br' and referency_value==101:
-                print("Don't include the non forest style entry into the final file.")
-            elif self.OUTPUT_TYPE == 'marco' and (referency_value==101 or (referency_value>=21 and referency_value<=49) or (referency_value>=61 and referency_value<=90)):
-                print("Don't include the non forest style entry into the final file.")
+            if self.OUTPUT_TYPE == 'br' and referency_value in [101,200]:
+                print(f"Don't include the ({referency_value}) style entry into the {self.OUTPUT_TYPE} file.")
+            elif self.OUTPUT_TYPE in ['marco','marco_biome'] and referency_value not in [91,100,200]:
+                print(f"Don't include the ({referency_value}) style entry into the {self.OUTPUT_TYPE} file.")
+            elif self.OUTPUT_TYPE == 'biome' and referency_value == 200:
+                print(f"Don't include the ({referency_value}) style entry into the {self.OUTPUT_TYPE} file.")
             else:
                 if referency_value not in self.mainFractions:
+                    attr_label = child.attrib['label']
+                    if self.OUTPUT_TYPE == 'br' and referency_value == 100:
+                        attr_label = "100 Vegetação nativa"
                     
                     paletteEntry=""
                     if type=='sfl':
-                        paletteEntry=f"""<{child.tag} color="{child.attrib['color']}" label="{child.attrib['label']}" value="{child.attrib['value']}" alpha="{child.attrib['alpha']}"/>"""
+                        paletteEntry=f"""<{child.tag} color="{child.attrib['color']}" label="{attr_label}" value="{child.attrib['value']}" alpha="{child.attrib['alpha']}"/>"""
                     else:
-                        paletteEntry=f"""<sld:ColorMapEntry color="{child.attrib['color']}" label="{child.attrib['label']}" quantity="{child.attrib['quantity']}"/>"""
+                        paletteEntry=f"""<sld:ColorMapEntry color="{child.attrib['color']}" label="{attr_label}" quantity="{child.attrib['quantity']}"/>"""
                     
                     self.mainFractions[referency_value]=paletteEntry
 
