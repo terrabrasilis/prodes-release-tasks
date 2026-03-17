@@ -26,6 +26,7 @@ if [[ "${BUILD_BR_MOSAIC}" = "yes" ]];
 then
     # used to store one raster for each database
     INPUT_FILES_MOSAIC=()
+    INPUT_FILES_MARCO_MOSAIC=()
 fi;
 
 # to store dbnames used to clean temporary files in the end
@@ -86,8 +87,8 @@ do
         BBOX_FINAL=${BBOX_FROM_CONFIG}
     fi;
 
-    INPUT_FILES=()
-    #MARCO_INPUT_FILES=()
+    PRODES_INPUT_FILES=()
+    MARCO_INPUT_FILES=()
     REFERENCE_INPUT_FILES=()
     TBS_NAME=()
     # define tables of type data to insert into raster file.
@@ -112,23 +113,18 @@ do
             create_table_to_burn "${TB_NAME}"
 
             # output file name
-            OUTPUT_FILE="${TB_NAME}_${BASE_YEAR}"
-            # MARCO_OUTPUT_FILE="${TB_NAME}_${MARCO_YEAR}"
+            TABLE_OUTPUT_FILE="${TB_NAME}_${BASE_YEAR}"
             REFERENCE_OUTPUT_FILE=""
             echo "DEBUG INFO"
-            echo "OUTPUT_FILE=${OUTPUT_FILE}"
+            echo "TABLE_OUTPUT_FILE=${TABLE_OUTPUT_FILE}"
             
             # generate a color palette to current data
-            generate_palette_entries "${TB_NAME}" "${OUTPUT_DIR}" "${PGCONNECTION}" "${BASE_YEAR}"
+            generate_palette_entries "${TB_NAME}" "${OUTPUT_DIR}" "${PGCONNECTION}" "${BASE_YEAR}" "${TARGET_NAME}"
 
             # rasterize vector table if needed
             if [[ "${REBUILD_ONLY_BR_MOSAIC}" = "no" ]];
             then
-                # to avoid marco eu raster generation
-                #if [[ ! ${TB_NAME} == marco_eu_deforestation* ]]; then
-                    generate_raster "${TB_NAME}" "${BBOX_FINAL}" "${PIXEL_SIZE}" "${PGCONNECTION}" "${OUTPUT_DIR}/${OUTPUT_FILE}"
-                #fi;
-                #generate_raster "${TB_NAME}" "${BBOX_FINAL}" "${PIXEL_SIZE}" "${PGCONNECTION}" "${OUTPUT_DIR}/${MARCO_OUTPUT_FILE}" "${MARCO_YEAR}"
+                generate_raster "${TB_NAME}" "${BBOX_FINAL}" "${PIXEL_SIZE}" "${PGCONNECTION}" "${OUTPUT_DIR}/${TABLE_OUTPUT_FILE}"
             fi;
 
             # If there is a difference between the REFERENCE YEAR and the BASE YEAR of the biome, construct the mosaic for the reference year.
@@ -139,15 +135,12 @@ do
                 echo "REFERENCE_OUTPUT_FILE=${REFERENCE_OUTPUT_FILE}"
                 
                 # generate a color palette to current data
-                generate_palette_entries "${TB_NAME}" "${OUTPUT_DIR}" "${PGCONNECTION}" "${REFERENCE_YEAR}"
+                generate_palette_entries "${TB_NAME}" "${OUTPUT_DIR}" "${PGCONNECTION}" "${REFERENCE_YEAR}" "${TARGET_NAME}"
 
                 # rasterize vector table if needed
                 if [[ "${REBUILD_ONLY_BR_MOSAIC}" = "no" ]];
                 then
-                    # to avoid marco eu raster generation
-                    #if [[ ! ${TB_NAME} == marco_eu_deforestation* ]]; then
-                        generate_raster "${TB_NAME}" "${BBOX_FINAL}" "${PIXEL_SIZE}" "${PGCONNECTION}" "${OUTPUT_DIR}/${REFERENCE_OUTPUT_FILE}" "${REFERENCE_YEAR}"
-                    #fi;
+                    generate_raster "${TB_NAME}" "${BBOX_FINAL}" "${PIXEL_SIZE}" "${PGCONNECTION}" "${OUTPUT_DIR}/${REFERENCE_OUTPUT_FILE}" "${REFERENCE_YEAR}"
                 fi;
             fi;
 
@@ -155,21 +148,29 @@ do
             TBS_NAME+=("${TB_NAME}")
 
             # to build the biome raster, for the current biome year, in the next step
-            if [[ -f "${OUTPUT_DIR}/${OUTPUT_FILE}.tif" ]];
+            if [[ -f "${OUTPUT_DIR}/${TABLE_OUTPUT_FILE}.tif" ]];
             then
-                # store the generated file into input list used in next step
-                INPUT_FILES+=("${OUTPUT_FILE}.tif")
+                # to avoid adding marco eu raster into prodes list
+                if [[ ! ${TB_NAME} == marco_eu_deforestation* ]]; then
+                    # store the generated file into prodes input list, used in next step, to generate prodes file
+                    PRODES_INPUT_FILES+=("${TABLE_OUTPUT_FILE}.tif")
+                fi;
+                # store the generated file into marco input list, used in next step, to generate marco ue file
+                MARCO_INPUT_FILES+=("${TABLE_OUTPUT_FILE}.tif")
             fi;
 
             # to build the biome raster, for the reference year, in the next step
             if [[ -f "${OUTPUT_DIR}/${REFERENCE_OUTPUT_FILE}.tif" ]];
             then
-                # store the generated file into input list used in next step
-                REFERENCE_INPUT_FILES+=("${REFERENCE_OUTPUT_FILE}.tif")
+                # to avoid adding marco eu raster into prodes list
+                if [[ ! ${TB_NAME} == marco_eu_deforestation* ]]; then
+                    # store the generated file into input list used in next step
+                    REFERENCE_INPUT_FILES+=("${REFERENCE_OUTPUT_FILE}.tif")
+                fi;
 
-            elif [[ -f "${OUTPUT_DIR}/${OUTPUT_FILE}.tif" ]]; then
+            elif [[ -f "${OUTPUT_DIR}/${TABLE_OUTPUT_FILE}.tif" ]]; then
                 # using the default generated file
-                REFERENCE_INPUT_FILES+=("${OUTPUT_FILE}.tif")
+                REFERENCE_INPUT_FILES+=("${TABLE_OUTPUT_FILE}.tif")
             fi;
             
         else
@@ -181,65 +182,86 @@ do
     # GENERATE ONE RASTER FOR THE CURRENT BIOME AND BASE YEAR
     # ------------------------------------------------ #
     # build the biome raster using each table raster
-    INPUT_FILES=$(echo ${INPUT_FILES[@]})
-    OUTPUT_FILE="prodes_${TARGET_NAME}_${BASE_YEAR}"
-    # MARCO_INPUT_FILES=$(echo ${MARCO_INPUT_FILES[@]})
-    # MARCO_OUTPUT_FILE="marco_eu_${TARGET_NAME}_${MARCO_YEAR}"
+    PRODES_INPUT_FILES=$(echo ${PRODES_INPUT_FILES[@]})
+    PRODES_OUTPUT_FILE="prodes_${TARGET_NAME}_${BASE_YEAR}"
+    MARCO_INPUT_FILES=$(echo ${MARCO_INPUT_FILES[@]})
+    MARCO_OUTPUT_FILE="marco_eu_${TARGET_NAME}"
 
-    # generate the final file with all intermediary files if needed
+    # generate the final file with all intermediary files, if needed
     if [[ "${REBUILD_ONLY_BR_MOSAIC}" = "no" ]];
     then
-        generate_final_raster "${INPUT_FILES}" "${OUTPUT_FILE}" "${OUTPUT_DIR}"
-        #generate_final_raster "${MARCO_INPUT_FILES}" "${MARCO_OUTPUT_FILE}" "${OUTPUT_DIR}"
+        generate_final_raster "${PRODES_INPUT_FILES}" "${PRODES_OUTPUT_FILE}" "${OUTPUT_DIR}"
+        generate_final_raster "${MARCO_INPUT_FILES}" "${MARCO_OUTPUT_FILE}" "${OUTPUT_DIR}"
+        # change pixel value for deforestation after 2020 (MARCO)
+        generate_prodes_and_marco_products "${MARCO_OUTPUT_FILE}" "${OUTPUT_DIR}" "${BASE_YEAR}" "marco_biome"
     fi;
 
+    ## PRODES PRODUCT BY biome or amzl ###############################
     # join all style fractions, sfl and sldf into one style file for each style format
-    generate_main_palette_entries "${OUTPUT_FILE}" "${OUTPUT_DIR}" "${BASE_YEAR}" "biome"
-    
+    generate_main_palette_entries "${PRODES_OUTPUT_FILE}" "${OUTPUT_DIR}" "biome" "${BASE_YEAR}"
     # generate the style as QML file
-    QML_FRACTIONS=("${OUTPUT_FILE}.sfl")
-    generate_qml_file "${QML_FRACTIONS}" "${OUTPUT_FILE}" "${OUTPUT_DIR}"
-    
+    QML_FRACTIONS=("${PRODES_OUTPUT_FILE}.sfl")
+    generate_qml_file "${QML_FRACTIONS}" "${PRODES_OUTPUT_FILE}" "${OUTPUT_DIR}"
     # generate the style as SLD file
-    SLD_FRACTIONS=("${OUTPUT_FILE}.sldf")
-    generate_sld_file "${SLD_FRACTIONS}" "${OUTPUT_FILE}" "${OUTPUT_DIR}"
+    SLD_FRACTIONS=("${PRODES_OUTPUT_FILE}.sldf")
+    generate_sld_file "${SLD_FRACTIONS}" "${PRODES_OUTPUT_FILE}" "${OUTPUT_DIR}"
+    # ###############################
+
+    ## MARCO PRODUCT BY biome or amzl ###############################
+    # join all style fractions, sfl and sldf into one style file for each style format
+    generate_main_palette_entries "${MARCO_OUTPUT_FILE}" "${OUTPUT_DIR}" "marco_biome" "${BASE_YEAR}"
+    # generate the style as QML file
+    QML_FRACTIONS=("${MARCO_OUTPUT_FILE}.sfl")
+    generate_qml_file "${QML_FRACTIONS}" "${MARCO_OUTPUT_FILE}" "${OUTPUT_DIR}"
+    # generate the style as SLD file
+    SLD_FRACTIONS=("${MARCO_OUTPUT_FILE}.sldf")
+    generate_sld_file "${SLD_FRACTIONS}" "${MARCO_OUTPUT_FILE}" "${OUTPUT_DIR}"
+    # ###############################
 
     if [[ "${REBUILD_ONLY_BR_MOSAIC}" = "no" ]];
     then
+        ## PRODES PRODUCT BY biome or amzl ###############################
         # generate the report file
-        generate_report_file "${OUTPUT_FILE}" "${OUTPUT_DIR}"
-
+        generate_report_file "${PRODES_OUTPUT_FILE}" "${OUTPUT_DIR}"
         # generate the ZIP file
-        generate_final_zip_file "${OUTPUT_FILE}" "${OUTPUT_DIR}"
+        generate_final_zip_file "${PRODES_OUTPUT_FILE}" "${OUTPUT_DIR}"
+        # ###############################
+
+        ## MARCO PRODUCT BY biome or amzl ###############################
+        # generate the report file
+        generate_report_file "${MARCO_OUTPUT_FILE}" "${OUTPUT_DIR}"
+        # generate the ZIP file
+        generate_final_zip_file "${MARCO_OUTPUT_FILE}" "${OUTPUT_DIR}"
+        # ###############################
 
         # remove temporary TIF files
-        remove_temporary_files "${INPUT_FILES}" "${OUTPUT_DIR}" "file"
+        remove_temporary_files "${PRODES_INPUT_FILES}" "${OUTPUT_DIR}" "file"
     fi;
 
     # ------------------------------------------------ #
-    # GENERATE ONE RASTER FOR THE CURRENT BIOME UNTIL REFERENCE YEAR
+    # GENERATE ONE RASTER FOR THE CURRENT BIOME UNTIL REFERENCE YEAR - ONLY PRODES 
     # ------------------------------------------------ #
     if [[ ! "${BASE_YEAR}" = "${REFERENCE_YEAR}" ]]; then
         # build the biome raster using each table raster
         REFERENCE_INPUT_FILES=$(echo ${REFERENCE_INPUT_FILES[@]})
-        OUTPUT_FILE="prodes_${TARGET_NAME}_${REFERENCE_YEAR}"
+        PRODES_OUTPUT_FILE="prodes_${TARGET_NAME}_${REFERENCE_YEAR}"
 
         # generate the final file with all intermediary files if needed
         if [[ "${REBUILD_ONLY_BR_MOSAIC}" = "no" ]];
         then
-            generate_final_raster "${REFERENCE_INPUT_FILES}" "${OUTPUT_FILE}" "${OUTPUT_DIR}"
+            generate_final_raster "${REFERENCE_INPUT_FILES}" "${PRODES_OUTPUT_FILE}" "${OUTPUT_DIR}"
         fi;
 
         # join all style fractions, sfl and sldf into one style file for each style format
-        generate_main_palette_entries "${OUTPUT_FILE}" "${OUTPUT_DIR}" "${REFERENCE_YEAR}" "biome"
+        generate_main_palette_entries "${PRODES_OUTPUT_FILE}" "${OUTPUT_DIR}" "biome" "${REFERENCE_YEAR}"
         
         # generate the style as QML file
-        QML_FRACTIONS=("${OUTPUT_FILE}.sfl")
-        generate_qml_file "${QML_FRACTIONS}" "${OUTPUT_FILE}" "${OUTPUT_DIR}"
+        QML_FRACTIONS=("${PRODES_OUTPUT_FILE}.sfl")
+        generate_qml_file "${QML_FRACTIONS}" "${PRODES_OUTPUT_FILE}" "${OUTPUT_DIR}"
         
         # generate the style as SLD file
-        SLD_FRACTIONS=("${OUTPUT_FILE}.sldf")
-        generate_sld_file "${SLD_FRACTIONS}" "${OUTPUT_FILE}" "${OUTPUT_DIR}"
+        SLD_FRACTIONS=("${PRODES_OUTPUT_FILE}.sldf")
+        generate_sld_file "${SLD_FRACTIONS}" "${PRODES_OUTPUT_FILE}" "${OUTPUT_DIR}"
 
         # remove temporary TIF files
         if [[ "${REBUILD_ONLY_BR_MOSAIC}" = "no" ]];
@@ -252,9 +274,10 @@ do
     drop_temporary_table "${TBS_NAME}"
 
     # store file name of each biome raster, used to make BR mosaic
-    if [[ "${BUILD_BR_MOSAIC}" = "yes" && -f "${OUTPUT_DIR}/${OUTPUT_FILE}.tif" && ! "${TARGET_NAME}" = "amazonia_legal" ]];
+    if [[ "${BUILD_BR_MOSAIC}" = "yes" && -f "${OUTPUT_DIR}/${PRODES_OUTPUT_FILE}.tif" && ! "${TARGET_NAME}" = "amazonia_legal" ]];
     then
-        INPUT_FILES_MOSAIC+=("${OUTPUT_DIR}/${OUTPUT_FILE}.tif")
+        INPUT_FILES_MOSAIC+=("${OUTPUT_DIR}/${PRODES_OUTPUT_FILE}.tif")
+        INPUT_FILES_MARCO_MOSAIC+=("${OUTPUT_DIR}/${MARCO_OUTPUT_FILE}.tif")
     fi;
 
 done # end of biome list
@@ -263,43 +286,47 @@ done # end of biome list
 if [[ "${BUILD_BR_MOSAIC}" = "yes" ]];
 then
     INPUT_FILES_MOSAIC=$(echo ${INPUT_FILES_MOSAIC[@]})
-    OUTPUT_FILE="prodes_brasil"
+    INPUT_FILES_MARCO_MOSAIC=$(echo ${INPUT_FILES_MARCO_MOSAIC[@]})
+    PRODES_OUTPUT_FILE="prodes_brasil"
+    MARCO_OUTPUT_FILE="marco_brasil"
     # The output directory for BR mosaic
     OUTPUT_DIR="${BASE_PATH_DATA}"
     
-    # generate the final file with all intermediate files
-    generate_final_raster "${INPUT_FILES_MOSAIC}" "${OUTPUT_FILE}" "${OUTPUT_DIR}"
+    # generate the final PRODES file with all intermediate files
+    generate_final_raster "${INPUT_FILES_MOSAIC}" "${PRODES_OUTPUT_FILE}" "${OUTPUT_DIR}"
+    # generate the final MARCO file with all intermediate files
+    generate_final_raster "${INPUT_FILES_MARCO_MOSAIC}" "${MARCO_OUTPUT_FILE}" "${OUTPUT_DIR}"
     # change pixel value from non-forest areas
-    generate_br_and_marco_products "${OUTPUT_FILE}" "${OUTPUT_DIR}" "${REFERENCE_YEAR}" "br"
+    generate_prodes_and_marco_products "${PRODES_OUTPUT_FILE}" "${OUTPUT_DIR}" "${REFERENCE_YEAR}" "prodes"
     # change pixel value for deforestation after 2020 (MARCO)
-    generate_br_and_marco_products "${OUTPUT_FILE}" "${OUTPUT_DIR}" "${REFERENCE_YEAR}" "marco"
+    generate_prodes_and_marco_products "${MARCO_OUTPUT_FILE}" "${OUTPUT_DIR}" "${REFERENCE_YEAR}" "marco"
 
     if [[ "${BUILD_FIRES_DASHBOARD_PRODUCTS}" = "yes" ]];
     then
         # generate a base map from prodes with forest + non-forest + hydrography
-        generate_fires_dashboard_products "${OUTPUT_FILE}" "${OUTPUT_DIR}" "${REFERENCE_YEAR}" "p1"
+        generate_fires_dashboard_products "${PRODES_OUTPUT_FILE}" "${OUTPUT_DIR}" "${REFERENCE_YEAR}" "p1"
 
         # generate a map from deforestation data from more than 3 years ago
-        generate_fires_dashboard_products "${OUTPUT_FILE}" "${OUTPUT_DIR}" "${REFERENCE_YEAR}" "p2"
+        generate_fires_dashboard_products "${PRODES_OUTPUT_FILE}" "${OUTPUT_DIR}" "${REFERENCE_YEAR}" "p2"
 
         # generate a map only with recent deforestation less than 3 years old
-        generate_fires_dashboard_products "${OUTPUT_FILE}" "${OUTPUT_DIR}" "${REFERENCE_YEAR}" "p3"
+        generate_fires_dashboard_products "${PRODES_OUTPUT_FILE}" "${OUTPUT_DIR}" "${REFERENCE_YEAR}" "p3"
     fi;
 
     # join all style fractions into one style file for each style format, QML and SLD
-    generate_main_palette_entries "${OUTPUT_FILE}" "${OUTPUT_DIR}" "${REFERENCE_YEAR}" "br"
-    generate_main_palette_entries "${OUTPUT_FILE}" "${OUTPUT_DIR}" "${REFERENCE_YEAR}" "marco"
+    generate_main_palette_entries "${PRODES_OUTPUT_FILE}" "${OUTPUT_DIR}" "br" "${REFERENCE_YEAR}"
+    generate_main_palette_entries "${PRODES_OUTPUT_FILE}" "${OUTPUT_DIR}" "marco" "${REFERENCE_YEAR}"
 
     # generate the style as QML file
-    QML_FRACTIONS=("${OUTPUT_FILE}.sfl")
-    generate_qml_file "${QML_FRACTIONS}" "${OUTPUT_FILE}" "${OUTPUT_DIR}"
+    QML_FRACTIONS=("${PRODES_OUTPUT_FILE}.sfl")
+    generate_qml_file "${QML_FRACTIONS}" "${PRODES_OUTPUT_FILE}" "${OUTPUT_DIR}"
     
     # generate the style as SLD file
-    SLD_FRACTIONS=("${OUTPUT_FILE}.sldf")
-    generate_sld_file "${SLD_FRACTIONS}" "${OUTPUT_FILE}" "${OUTPUT_DIR}"
+    SLD_FRACTIONS=("${PRODES_OUTPUT_FILE}.sldf")
+    generate_sld_file "${SLD_FRACTIONS}" "${PRODES_OUTPUT_FILE}" "${OUTPUT_DIR}"
 
     # generate the report file
-    generate_report_file "${OUTPUT_FILE}" "${OUTPUT_DIR}"
+    generate_report_file "${PRODES_OUTPUT_FILE}" "${OUTPUT_DIR}"
 
 fi;
 

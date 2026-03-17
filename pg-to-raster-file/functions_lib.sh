@@ -128,7 +128,7 @@ get_class_number(){
             ;;
 
         biome | amazon | brazilian)
-            echo "100::integer as class_number, 'Vegetação nativa florestal' as class_name, '2000'::integer as year"
+            echo "100::integer as class_number, 'Vegetação nativa' as class_name, '2000'::integer as year"
             ;;
 
         no)
@@ -138,7 +138,7 @@ get_class_number(){
             echo "99::integer as class_number, 'Nuvem' as class_name, '2000'::integer as year"
             ;;
         marco)
-            echo "220::integer as class_number, 'Marco EU' as class_name, '2020'::integer as year"
+            echo "200::integer as class_number, 'Marco EU' as class_name, '2020'::integer as year"
             ;;
         *)
             echo "255::integer as class_number, 'no data' as class_name, '2000'::integer as year"
@@ -249,7 +249,24 @@ generate_final_raster(){
     cd -
 }
 
-generate_br_and_marco_products(){
+raster_calculator(){
+    IPF1="${1}"
+    DATA_DIR="${2}"
+    CALC="${3}"
+    PRDN1="${4}"
+    NO_DATA=${5}
+
+    cd ${DATA_DIR}
+
+    gdal_calc.py --co="COMPRESS=LZW" --co="BIGTIFF=YES" --NoDataValue=${NO_DATA} \
+    -A "${IPF1}.tif" --type=Byte --quiet \
+    --calc="${CALC}" \
+    --outfile="${PRDN1}.tif"
+
+    cd -
+}
+
+generate_prodes_and_marco_products(){
     INPUT_FILE="${1}"
     DATA_DIR="${2}"
     BASE_YEAR="${3}"
@@ -258,31 +275,33 @@ generate_br_and_marco_products(){
     # the pixel value that represents deforestation and residual after 2020
     DEFORESTATION_PV="21"
     RESIDUAL_PV="61"
-    # suffix product name
-    PRODUCT_NAME="prodes_brasil"
+    # file product name
+    PRODUCT_NAME="${PRODUCT}_brasil"
 
-    if [[ "br" = "${PRODUCT}" ]]; then
+    if [[ "marco_biome" = "${PRODUCT}" ]]; then
+        PRODUCT_NAME="${INPUT_FILE}"
+        PRODUCT="marco"
+    fi;
+
+    if [[ "prodes" = "${PRODUCT}" ]]; then
         # change pixel value from no-forest(101) to forest(100)
         CALC="numpy.where((A==101),100,A)"
-        PRODUCT_NAME="${PRODUCT_NAME}_${BASE_YEAR}"
+        raster_calculator "${INPUT_FILE}" "${DATA_DIR}" "${CALC}" "${PRODUCT_NAME}_${BASE_YEAR}" 255
+        # remove the input file
+        rm "${DATA_DIR}/${INPUT_FILE}.tif"
     elif [[ "marco" = "${PRODUCT}" ]]; then
         # change pixel values from no-forest(101) to forest(100) AND after 2020 of deforestation(>2020) to forest(100)
-        #CALC="((A==101)*100 + 100*logical_and(A>=${DEFORESTATION_PV},A<=49) + 100*logical_and(A>=${RESIDUAL_PV},A<=90))"
         CALC="numpy.where((A==101),100,numpy.where(logical_and(A>=${DEFORESTATION_PV},A<=49),100,numpy.where(logical_and(A>=${RESIDUAL_PV},A<=90),100,A)))"
-        PRODUCT_NAME="${PRODUCT_NAME}_marco_${BASE_YEAR}"
+        raster_calculator "${INPUT_FILE}" "${DATA_DIR}" "${CALC}" "${PRODUCT_NAME}_tmp" 255
+        # remove the input file to rewrite in the next step
+        rm "${DATA_DIR}/${INPUT_FILE}.tif"
+        CALC="numpy.where((A<=90),200,A)"
+        raster_calculator "${PRODUCT_NAME}_tmp" "${DATA_DIR}" "${CALC}" "${PRODUCT_NAME}" 255
+        rm "${DATA_DIR}/${PRODUCT_NAME}_tmp.tif"
     else
         echo "unrecognized option for product: ${PRODUCT}"
         exit
     fi;
-
-    cd ${DATA_DIR}
-
-    gdal_calc.py --co="COMPRESS=LZW" --co="BIGTIFF=YES" --NoDataValue=255 \
-    -A "${INPUT_FILE}.tif" --type=Byte --quiet \
-    --calc="${CALC}" \
-    --outfile="${PRODUCT_NAME}.tif"
-
-    cd -
 }
 
 generate_fires_dashboard_products(){
@@ -310,14 +329,16 @@ generate_fires_dashboard_products(){
         exit
     fi;
 
-    cd ${DATA_DIR}
+    raster_calculator "${INPUT_FILE}" "${DATA_DIR}" "${CALC}" "fires_dashboard_prodes_${PRODUCT}" 0
 
-    gdal_calc.py --co="COMPRESS=LZW" --co="BIGTIFF=YES" --NoDataValue=0 \
-    -A "${INPUT_FILE}.tif" --type=Byte --quiet \
-    --calc="${CALC}" \
-    --outfile="fires_dashboard_prodes_${PRODUCT}.tif"
+    # cd ${DATA_DIR}
 
-    cd -
+    # gdal_calc.py --co="COMPRESS=LZW" --co="BIGTIFF=YES" --NoDataValue=0 \
+    # -A "${INPUT_FILE}.tif" --type=Byte --quiet \
+    # --calc="${CALC}" \
+    # --outfile="fires_dashboard_prodes_${PRODUCT}.tif"
+
+    # cd -
 }
 
 generate_palette_entries(){
@@ -325,9 +346,8 @@ generate_palette_entries(){
     export TB_NAME="${1}"
     export DATA_DIR="${2}"
     export PG_CONN="${3}"
-    if [[ ! "" = "${4}" ]]; then
-        export REF_YEAR="${4}"
-    fi;
+    export REF_YEAR="${4}"
+    export TARGET="${5}"
     
     # used to generate and store each fraction of QML and SLD palette entries on data dir to build the final style files
     python3 build_style_fraction.py
@@ -337,10 +357,8 @@ generate_main_palette_entries(){
     # Used to read inside python script
     export FILE_NAME="${1}"
     export DATA_DIR="${2}"
-    if [[ ! "" = "${3}" ]]; then
-        export REF_YEAR="${3}"
-    fi;
-    export OUTPUT_TYPE="${4}"
+    export OUTPUT_TYPE="${3}"
+    export REF_YEAR="${4}"
 
     # used to join each QML and SLD biome files into one mosaic style file
     python3 build_style.py
